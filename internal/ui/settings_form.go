@@ -21,7 +21,14 @@ const (
 	numSettingsFields
 )
 
+// langKeys are config codes persisted to disk; langOptionKeys map the same
+// index to the i18n key rendering the current language option.
 var langKeys = []string{"auto", "zh_CN", "en"}
+var langOptionKeys = []string{"settings.lang_auto", "settings.lang_zh", "settings.lang_en"}
+var updateKeys = []string{"settings.update_on", "settings.update_off"}
+var escKeys = []string{"settings.esc_on", "settings.esc_off"}
+var ftpLayoutKeys = []string{"ftp.layout_dual", "ftp.layout_single"}
+var sftpLayoutKeys = []string{"sftp.layout_dual", "sftp.layout_single"}
 
 type settingsFormModel struct {
 	styles     Styles
@@ -29,6 +36,8 @@ type settingsFormModel struct {
 	height     int
 	appConfig  config.AppConfig
 	focusIndex settingsField
+
+	scrollOffset int
 
 	langIndex       int // 0=auto, 1=zh_CN, 2=en
 	updateIndex     int // 0=enabled, 1=disabled
@@ -195,64 +204,124 @@ func (m *settingsFormModel) saveSettings() tea.Cmd {
 }
 
 func (m *settingsFormModel) View() string {
+	// Collect rows first so the label/value columns can be sized and aligned
+	// to uniform widths, keeping the ◂ value ▸ frames aligned on both sides.
+	// Option values are pure UI labels from the active locale — no
+	// bilingual annotations inside them.
+	rows := []struct {
+		idx   settingsField
+		label string
+		value string
+	}{
+		{settingsFieldLang, i18n.T("settings.lang_label"), i18n.T(langOptionKeys[m.langIndex])},
+		{settingsFieldUpdate, i18n.T("settings.update_label"), i18n.T(updateKeys[m.updateIndex])},
+		{settingsFieldEscQuit, i18n.T("settings.esc_quit_label"), i18n.T(escKeys[m.disableEscIndex])},
+		{settingsFieldFTPLayout, i18n.T("settings.ftp_layout_label"), i18n.T(ftpLayoutKeys[m.ftpLayoutIndex])},
+		{settingsFieldSFTPLayout, i18n.T("settings.sftp_layout_label"), i18n.T(sftpLayoutKeys[m.sftpLayoutIndex])},
+	}
+	innerWidth := formPageInnerWidth(m.width)
+	maxLabelWidth := 24
+	for _, r := range rows {
+		if w := ansi.StringWidth("  " + r.label); w > maxLabelWidth {
+			maxLabelWidth = w
+		}
+	}
+	// Leave at least one column between the label text and the arrow so the
+	// widest label never sits flush against ◂.
+	maxLabelWidth++
+
+	// Panel layout: label left, value right-aligned to the box edge so rows
+	// span the full inner width instead of leaving trailing whitespace on
+	// wide terminals. Row = labelWidth + ◂ +(space)+ value(⇐ valueWidth) + (space)+ ▸.
+	// valueWidth is at least the widest current value so selecting a long
+	// option (e.g. Vim mode) never overflows the cell and wraps the row.
+	widestValue := 0
+	for _, r := range rows {
+		if w := ansi.StringWidth(r.value); w > widestValue {
+			widestValue = w
+		}
+	}
+	maxValueWidth := innerWidth - maxLabelWidth - 4
+	if maxValueWidth < widestValue {
+		maxValueWidth = widestValue
+	}
+	if maxValueWidth < 10 {
+		maxValueWidth = 10
+	}
+
+	// 1. Build the body lines (each setting row is one line).
+	bodyLines := make([]string, 0, len(rows))
+	for _, r := range rows {
+		bodyLines = append(bodyLines, m.renderRow(r.idx, r.label, r.value, maxLabelWidth, maxValueWidth))
+	}
+
+	// 2. Pinned header and footer, scrolled body between them.
+	header := m.styles.Header.Render(i18n.T("settings.title"))
+	helpText := m.styles.HelpText.Render(ansi.Truncate(i18n.T("settings.help"), innerWidth, ""))
+
+	// 3. Viewport calculation & focus-following auto-scroll (same pattern as
+	//    the add/edit forms): the focused row is always visible, so the
+	//    dialog stays usable down to a few rows of terminal height.
+	// Content height = header(2) + 2 per row (row + blank) + help(1) = 3+2N,
+	// plus FormContainer chrome (border 2 + vertical padding 2) = 4, so the
+	// box fits h rows when N ≤ (h-7)/2.
+	totalHeight := m.height
+	if totalHeight <= 0 {
+		totalHeight = 24
+	}
+	viewportHeight := (totalHeight - 7) / 2
+	if viewportHeight < 1 {
+		viewportHeight = 1
+	}
+
+	rowPos := int(m.focusIndex)
+	if len(bodyLines) > viewportHeight {
+		if rowPos < m.scrollOffset {
+			m.scrollOffset = rowPos
+		}
+		if rowPos >= m.scrollOffset+viewportHeight {
+			m.scrollOffset = rowPos - viewportHeight + 1
+		}
+		if m.scrollOffset > len(bodyLines)-viewportHeight {
+			m.scrollOffset = len(bodyLines) - viewportHeight
+		}
+		if m.scrollOffset < 0 {
+			m.scrollOffset = 0
+		}
+	} else {
+		m.scrollOffset = 0
+	}
+
+	endIdx := m.scrollOffset + viewportHeight
+	if endIdx > len(bodyLines) {
+		endIdx = len(bodyLines)
+	}
+	visibleBody := bodyLines[m.scrollOffset:endIdx]
+
 	var b strings.Builder
-
-	// Title
-	b.WriteString(m.styles.Header.Render(i18n.T("settings.title")))
+	b.WriteString(header)
 	b.WriteString("\n\n")
-
-	// 1. Language options
-	var langDisplay []string
-	if i18n.CurrentLang() == i18n.LangZHCN {
-		langDisplay = []string{"跟随系统 (Auto)", "简体中文 (zh_CN)", "English (en)"}
-	} else {
-		langDisplay = []string{"Follow System (Auto)", "Simplified Chinese (zh_CN)", "English (en)"}
+	for _, line := range visibleBody {
+		b.WriteString(line)
+		b.WriteString("\n\n")
 	}
-	m.renderRow(&b, settingsFieldLang, i18n.T("settings.lang_label"), langDisplay[m.langIndex])
+	b.WriteString(helpText)
 
-	// 2. Check for updates
-	var updateDisplay []string
-	if i18n.CurrentLang() == i18n.LangZHCN {
-		updateDisplay = []string{"开启 (Enabled)", "关闭 (Disabled)"}
-	} else {
-		updateDisplay = []string{"Enabled", "Disabled"}
+	// Fill the full terminal height via lipgloss.Place so every frame
+	// outputs exactly m.height lines. If View returned fewer lines after a
+	// resize, the standard renderer leaves the old frame's bottom border
+	// behind on screen (no erase on WindowSizeMsg beyond repaint).
+	box := m.styles.FormContainer.Width(m.width - 2).Render(b.String())
+	if lipgloss.Height(box) > m.height {
+		// Content taller than the terminal: no way to fill height without
+		// clipping the dialog; return it as-is (terminal scrolls).
+		return box
 	}
-	m.renderRow(&b, settingsFieldUpdate, i18n.T("settings.update_label"), updateDisplay[m.updateIndex])
-
-	// 3. ESC behavior
-	var escDisplay []string
-	if i18n.CurrentLang() == i18n.LangZHCN {
-		escDisplay = []string{"允许直接退出 (默认)", "禁用 ESC 退出 (Vim 模式)"}
-	} else {
-		escDisplay = []string{"Quit on ESC (Default)", "Disable ESC Quit (Vim mode)"}
-	}
-	m.renderRow(&b, settingsFieldEscQuit, i18n.T("settings.esc_quit_label"), escDisplay[m.disableEscIndex])
-
-	// 4. FTP layout
-	var ftpLayoutDisplay []string
-	if i18n.CurrentLang() == i18n.LangZHCN {
-		ftpLayoutDisplay = []string{"双栏 (Dual pane)", "单栏 (Single pane)"}
-	} else {
-		ftpLayoutDisplay = []string{"Dual pane", "Single pane"}
-	}
-	m.renderRow(&b, settingsFieldFTPLayout, i18n.T("settings.ftp_layout_label"), ftpLayoutDisplay[m.ftpLayoutIndex])
-
-	// 5. SFTP layout
-	var sftpLayoutDisplay []string
-	if i18n.CurrentLang() == i18n.LangZHCN {
-		sftpLayoutDisplay = []string{"双栏 (Dual pane)", "单栏 (Single pane)"}
-	} else {
-		sftpLayoutDisplay = []string{"Dual pane", "Single pane"}
-	}
-	m.renderRow(&b, settingsFieldSFTPLayout, i18n.T("settings.sftp_layout_label"), sftpLayoutDisplay[m.sftpLayoutIndex])
-
-	b.WriteString("\n")
-	b.WriteString(m.styles.HelpText.Render(i18n.T("settings.help")))
-
-	return m.styles.FormContainer.Render(b.String())
+	return lipgloss.Place(m.width, m.height,
+		lipgloss.Center, lipgloss.Center, box)
 }
 
-func (m *settingsFormModel) renderRow(b *strings.Builder, idx settingsField, label, value string) {
+func (m *settingsFormModel) renderRow(idx settingsField, label, value string, labelWidth, valueWidth int) string {
 	labelStyle := m.styles.FormField
 	arrowStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(SecondaryColor))
 	valStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Bold(true)
@@ -264,15 +333,19 @@ func (m *settingsFormModel) renderRow(b *strings.Builder, idx settingsField, lab
 	}
 
 	displayLabel := "  " + label
-	sw := ansi.StringWidth(displayLabel)
-	targetWidth := 24
-	if sw < targetWidth {
-		displayLabel += strings.Repeat(" ", targetWidth-sw)
+	if sw := ansi.StringWidth(displayLabel); sw < labelWidth {
+		displayLabel += strings.Repeat(" ", labelWidth-sw)
 	}
 
+	// Right-align the value so every row's closing arrow lines up.
+	if w := ansi.StringWidth(value); w < valueWidth {
+		value = strings.Repeat(" ", valueWidth-w) + value
+	}
+
+	var b strings.Builder
 	b.WriteString(labelStyle.Render(displayLabel))
 	b.WriteString(arrowStyle.Render("◂ "))
 	b.WriteString(valStyle.Render(value))
 	b.WriteString(arrowStyle.Render(" ▸"))
-	b.WriteString("\n\n")
+	return b.String()
 }
