@@ -19,10 +19,10 @@ the ctty config dir. Agents must drive it **non-interactively**.
 | Kind | Agent can | Hand to the human |
 |------|-----------|-------------------|
 | SSH | `search`, `info`, `add`/`edit` (flags), `exec`, `ctty <alias> -- <cmd>` | `ctty <alias>` shell, port-forward TUI (`f`) |
-| SFTP | `ctty put` / `ctty get` / `ctty scp` (preferred); or OpenSSH `scp`/`rsync` | `ctty sftp <alias>` TUI |
+| SFTP | `ctty put` / `ctty get` / `ctty scp` + `ctty sftp ls/mkdir/rm/rmdir/rename --format json` | `ctty sftp <alias>` TUI |
 | Telnet | `ctty telnet list|search|info --format json` | Interactive session (`Ctrl+]`) |
 | Serial | `ctty serial list|search|info --format json` | Device manager TUI |
-| FTP | `ctty ftp list|search|info --format json` | Site manager / dual-pane TUI |
+| FTP | `ctty ftp list|search|info --format json`, `ctty ftp ls/get/put/mkdir/rm/rmdir/rename` | Site manager / dual-pane TUI |
 | Import | `ctty import tabby --dry-run` then import | Confirm overwrite / Include |
 
 ## Hard rules
@@ -197,6 +197,13 @@ ctty --lang en --no-update-check put prod-web ./deploy.sh /tmp/deploy.sh
 ctty --lang en --no-update-check get prod-web /var/log/app.log ./app.log
 ctty --lang en --no-update-check scp ./out/ prod-web:/opt/app/
 ctty --lang en --no-update-check scp prod-web:/var/log/nginx/error.log /tmp/
+# Headless file ops (symmetric with FTP, --format json for ls):
+ctty --lang en --no-update-check sftp ls prod-web --format json
+ctty --lang en --no-update-check sftp ls prod-web /var/log --format json
+ctty --lang en --no-update-check sftp mkdir prod-web /tmp/newdir
+ctty --lang en --no-update-check sftp rm prod-web /tmp/file.txt
+ctty --lang en --no-update-check sftp rmdir prod-web /tmp/olddir
+ctty --lang en --no-update-check sftp rename prod-web /tmp/old.txt /tmp/new.txt
 ```
 
 Progress is on stderr; exit non-zero on failure; directories are recursive.
@@ -239,6 +246,14 @@ human to connect. Disconnect: `Ctrl+]` or `Ctrl+C`.
 ctty --lang en --no-update-check ftp list --format json
 ctty --lang en --no-update-check ftp search lab --format json
 ctty --lang en --no-update-check ftp info lab-nas --format json
+# Headless transfers (no TUI, progress on stderr, dirs recursive):
+ctty --lang en --no-update-check ftp ls lab-nas /pub --format json
+ctty --lang en --no-update-check ftp get lab-nas /pub/file.txt ./file.txt
+ctty --lang en --no-update-check ftp put lab-nas ./file.txt /pub/file.txt
+ctty --lang en --no-update-check ftp mkdir lab-nas /pub/newdir
+ctty --lang en --no-update-check ftp rm lab-nas /pub/file.txt
+ctty --lang en --no-update-check ftp rmdir lab-nas /pub/olddir
+ctty --lang en --no-update-check ftp rename lab-nas /pub/old.txt /pub/new.txt
 ```
 
 Do **not** open `ctty ftp` or `ctty ftp <name>` (TUI). Quote those for the human.
@@ -265,10 +280,10 @@ names are skipped.
 | Request | Agent does | Human does |
 |---------|------------|------------|
 | "SSH into prod" | `info` + remote commands, or quote `ctty prod` | Interactive SSH |
-| "SFTP / copy files" | `ctty put`/`get`/`scp` (or OpenSSH) | `ctty sftp host` |
+| "SFTP / copy files" | `ctty put`/`get`/`scp` + `sftp ls/mkdir/rm/rmdir/rename --format json` (or OpenSSH) | `ctty sftp host` |
 | "Telnet to the switch" | `telnet list|search|info --format json`, quote connect | Interactive telnet |
 | "Open serial / console" | `serial list|search|info --format json`, quote `ctty serial` | Serial TUI |
-| "FTP / browse FTP site" | `ftp list|search|info --format json`, quote `ctty ftp <name>` | FTP TUI |
+| "FTP / browse FTP site" | `ftp list|search|info|ls --format json`, `ftp get/put/mkdir/rm/rmdir/rename` (headless), quote `ctty ftp <name>` | FTP TUI |
 | "Port forward" | Explain `-L`/`-R`/`-D`; do not open TUI | `f` in the host list |
 | "Add a host" | `ctty add --name … --hostname …` (non-interactive flags) | `ctty add` TUI |
 | "Import Tabby" | `import tabby --dry-run`, then import if asked | Confirm result |

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.0] - 2026-09-16
+
+### Added
+
+- **📦 FTP headless CLI** — `ctty ftp ls <site> [path] [--format json]`, `get <site> <remote> <local>`, `put <site> <local> <remote>`, `mkdir`, `rm`, `rmdir` (recursive), `rename`; dirs recursive, progress on stderr, shell completions for site names, `--format json` for `ls`
+- **📋 SFTP headless CLI** — `ctty sftp ls <host> [path] [--format json]`, `mkdir`, `rm`, `rmdir` (recursive), `rename` under `ctty sftp` (root `put/get/scp` unchanged); host completions, JSON for `ls`
+
+### Notes
+
+This is the first stable release of `ctty`. It includes all features from `1.0.0-rc1`, plus the FTP and SFTP headless operations above. 🕹️
+
 ## [1.0.0-rc1] - 2026-09-15
 
 ### Milestone 1.0 Release Candidate 🎉
@@ -33,7 +44,6 @@ This milestone release marks the transition of `ctty` from an SSH host manager i
 - **📈 Latency Gradient Indicators** — Dynamic multi-tier ping latency thresholds (🟢 <100ms, 🟡 100–300ms, 🔴 >300ms / offline, ⚪ connecting).
 - **🚀 Geek Navigation Shortcuts** — `g` / `Home` to jump to top, `G` / `End` to jump to bottom, `1`-`9` for 1-key row jumping.
 - **📋 Universal Clipboard with OSC 52** — Clipboard copy (`y`) automatically falls back to OSC 52 escape sequences, enabling seamless remote clipboard synchronization over SSH and tmux sessions.
-
 ### Improved & Fixed
 
 - **Zero Layout Shifts** — Repositioned status toast notifications from the top header to the bottom status bar directly below the table, eliminating vertical screen jitter.

@@ -47,8 +47,8 @@ ctty is a fast, native terminal tool for managing all your connections — SSH h
 - **📝 Real-time Status** - Live SSH connectivity indicators with latency gradient colors (🟢 <100ms, 🟡 100-300ms, 🔴 >300ms / offline)
 - **🔌 Serial Connections** - Manage and connect to serial devices (mcu, console, switch, router) with configurable baud rate, data bits, parity, and stop bits; auto-detected ports appear in the list instantly
 - **📡 Telnet Connections** - Native RFC 854 telnet client (no system telnet needed): save and manage lab equipment, console servers, and legacy devices; reachability probe with one keypress
-- **📂 SFTP File Transfer** - Full-featured SFTP browser (`o` key) with remote browsing, upload/download queue with progress and cancel, transfer bell (`\a`), search, mkdir/delete, plus headless CLI transfers (`put`/`get`/`scp`)
-- **📁 FTP Site Manager** - Plain-FTP support (`F` key) for hosts without SSH: tagged site inventory, dual-pane local|remote browser, mkdir/delete/rename in both panes, single/dual layout toggle, passwords in the encrypted vault
+- **📂 SFTP File Transfer** - Full-featured SFTP browser (`o` key) with remote browsing, upload/download queue with progress and cancel, transfer bell (`\a`), search, mkdir/delete, plus headless CLI transfers (`put`/`get`/`scp` + `sftp ls/mkdir/rm/rmdir/rename`)
+- **📁 FTP Site Manager** - Plain-FTP support (`F` key) for hosts without SSH: tagged site inventory, dual-pane local|remote browser, mkdir/delete/rename in both panes, single/dual layout toggle, passwords in the encrypted vault, plus headless CLI transfers (`ftp ls/get/put/mkdir/rm/rmdir/rename`)
 - **🗂️ Local File Browser** - Standalone local filesystem manager (`b` key or `ctty browse [path]`): navigate, search, sort, mkdir/delete/rename with confirms, file details, open-with-default-app, reveal in file manager
 - **🔑 Password Storage & Zero-Touch Auto-Login** - Save SSH passwords securely in a local AES-256-GCM encrypted vault (`~/.config/ctty/credentials.json`, `0600` permissions) with native OpenSSH `SSH_ASKPASS` protocol bridge (zero third-party dependencies, works on macOS, Linux, Windows, and Termux)
 - **🖥️ Split-Pane & Small Terminal Friendly** - All forms and dialogs (Add/Edit Host, Port Forwarding, Host Info, Help Menu, Quick Peek, Batch Exec) feature focus-following dynamic viewport scrolling with fixed headers/footers. Works flawlessly in tmux/Zellij splits, VS Code/JetBrains embedded terminals, and tiling WMs (i3/Sway) down to 8~12 lines with zero height blocking or truncation
@@ -335,6 +335,19 @@ You can also launch the SFTP file browser directly from the command line:
 ctty sftp prod-server    # Open SFTP browser directly for a host
 ```
 
+**Headless SFTP file ops:**
+```bash
+ctty sftp ls prod-server                      # List remote directory
+ctty sftp ls prod-server /var/log --format json
+ctty sftp mkdir prod-server /tmp/newdir
+ctty sftp rm prod-server /tmp/file.txt
+ctty sftp rmdir prod-server /tmp/olddir
+ctty sftp rename prod-server /tmp/old.txt /tmp/new.txt
+# Transfers remain at root level:
+ctty put prod-server ./app.tar.gz /srv/app.tar.gz
+ctty get prod-server /var/log/app.log ./app.log
+```
+
 
 ### FTP File Transfer
 
@@ -374,6 +387,19 @@ You can also open the site manager or a site browser directly:
 ctty ftp            # FTP site manager TUI
 ctty ftp lab-nas    # Open browser directly for a saved site
 ```
+
+**Headless FTP transfers:**
+```bash
+ctty ftp ls lab-nas                         # List remote directory
+ctty ftp ls lab-nas /pub --format json      # Machine-readable listing
+ctty ftp get lab-nas /pub/file.txt ./file.txt
+ctty ftp put lab-nas ./file.txt /pub/file.txt
+ctty ftp mkdir lab-nas /pub/newdir
+ctty ftp rm lab-nas /pub/file.txt
+ctty ftp rmdir lab-nas /pub/olddir
+ctty ftp rename lab-nas /pub/old.txt /pub/new.txt
+```
+Progress is on stderr; directories are recursive; passwords are reused from the encrypted vault (`ftp:` names) or anonymous.
 
 
 ### Port Forwarding
@@ -542,6 +568,15 @@ ctty sftp prod-server
 # Open FTP site manager, or a site browser directly
 ctty ftp
 ctty ftp lab-nas
+
+# FTP headless transfers (no TUI, dirs recursive, progress on stderr)
+ctty ftp ls lab-nas /pub --format json
+ctty ftp get lab-nas /pub/file.txt ./file.txt
+ctty ftp put lab-nas ./file.txt /pub/file.txt
+ctty ftp mkdir lab-nas /pub/newdir
+ctty ftp rm lab-nas /pub/file.txt
+ctty ftp rmdir lab-nas /pub/olddir
+ctty ftp rename lab-nas /pub/old.txt /pub/new.txt
 
 # Browse the local filesystem (search, mkdir/delete/rename, file details)
 ctty browse

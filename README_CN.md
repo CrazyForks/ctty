@@ -44,8 +44,8 @@ ctty 是一个快速、原生的终端工具，用于管理你的所有连接 �
 - **📝 实时状态与阶梯时延** - 异步 ping 检查与多阶梯网络时延高亮指示（🟢 <100ms 优良、🟡 100-300ms 较慢、🔴 >300ms 离线/超时）
 - **🔌 串口连接** - 管理和连接串口设备（单片机、控制台、交换机、路由器），可配置波特率、数据位、校验、停止位；自动检测端口即时出现在列表中
 - **📡 Telnet 连接** - 原生 RFC 854 telnet 客户端（无需系统 telnet）：保存并管理实验室设备、控制台服务器和传统设备；一键探测可达性
-- **📂 SFTP 文件传输** - 功能完整的 SFTP 浏览器（`o` 键）：远程浏览、带进度和取消的上传/下载队列、传输完成终端响铃（`\a`）、搜索、新建/删除，以及无头 CLI 传输（`put`/`get`/`scp`）
-- **📁 FTP 站点管理** - 纯 FTP 支持（`F` 键），覆盖没有 SSH 的主机：带标签的站点清单、本地|远端双栏浏览器、双窗格新建/删除/重命名、单双栏切换、密码进加密保险库
+- **📂 SFTP 文件传输** - 功能完整的 SFTP 浏览器（`o` 键）：远程浏览、带进度和取消的上传/下载队列、传输完成终端响铃（`\a`）、搜索、新建/删除，以及无头 CLI 传输（`put`/`get`/`scp` + `sftp ls/mkdir/rm/rmdir/rename`）
+- **📁 FTP 站点管理** - 纯 FTP 支持（`F` 键），覆盖没有 SSH 的主机：带标签的站点清单、本地|远端双栏浏览器、双窗格新建/删除/重命名、单双栏切换、密码进加密保险库，以及 CLI 传输（`ftp ls/get/put/mkdir/rm/rmdir/rename`）
 - **🗂️ 本地文件浏览器** - 独立的本地文件管理器（`b` 键或 `ctty browse [路径]`）：浏览、搜索、排序、新建/删除/重命名（含确认）、文件详情、默认应用打开、文件管理器定位
 - **🔑 密码存储与免密自动登录** - 支持在本地 AES-256-GCM 加密保险库（`~/.config/ctty/credentials.json`，`0600` 权限）中安全保存密码，基于 OpenSSH 原生 `SSH_ASKPASS` 协议实现一键免密直连（零第三方依赖，完美兼容 macOS、Linux、Windows 和 Termux）
 - **🖥️ 分屏与极小窗口完美适配** - 所有表单与弹窗（添加/编辑主机、端口转发、帮助菜单、主机详情、速览卡片、批量执行）均采用焦点跟随的动态视口滚动，固定头部与底部导航；在 tmux/Zellij 分屏、VS Code/JetBrains 下方终端、i3/Sway 平铺窗口（即使只有 8~12 行）下均可丝滑操作，绝无高度拦截与内容裁切
@@ -331,6 +331,19 @@ ctty telnet 10.0.0.5:2001    # 指定端口直接连接
 ctty sftp prod-server    # 直接打开指定主机的 SFTP 文件浏览器
 ```
 
+**无头 SFTP 文件操作：**
+```bash
+ctty sftp ls prod-server                         # 列出远端目录
+ctty sftp ls prod-server /var/log --format json
+ctty sftp mkdir prod-server /tmp/newdir
+ctty sftp rm prod-server /tmp/file.txt
+ctty sftp rmdir prod-server /tmp/olddir
+ctty sftp rename prod-server /tmp/old.txt /tmp/new.txt
+# 传输仍在根级：
+ctty put prod-server ./app.tar.gz /srv/app.tar.gz
+ctty get prod-server /var/log/app.log ./app.log
+```
+
 ### FTP 文件传输
 
 在主界面按 `F`（Shift+F）打开 FTP 站点管理器——适用于不支持 SSH/SFTP 的纯 FTP 主机（实验室 NAS、老旧文件服务器、设备上传口）。
@@ -369,6 +382,19 @@ ctty sftp prod-server    # 直接打开指定主机的 SFTP 文件浏览器
 ctty ftp            # FTP 站点管理器 TUI
 ctty ftp lab-nas    # 直接打开指定站点的浏览器
 ```
+
+**无头 FTP 传输：**
+```bash
+ctty ftp ls lab-nas                          # 列出远端目录
+ctty ftp ls lab-nas /pub --format json       # 机器可读列表
+ctty ftp get lab-nas /pub/file.txt ./file.txt
+ctty ftp put lab-nas ./file.txt /pub/file.txt
+ctty ftp mkdir lab-nas /pub/newdir
+ctty ftp rm lab-nas /pub/file.txt
+ctty ftp rmdir lab-nas /pub/olddir
+ctty ftp rename lab-nas /pub/old.txt /pub/new.txt
+```
+进度输出到 stderr；目录递归；密码复用加密保险库（`ftp:` 前缀）或匿名。
 
 ### 端口转发
 
@@ -536,6 +562,15 @@ ctty sftp prod-server
 # 打开 FTP 站点管理器，或直接打开指定站点的浏览器
 ctty ftp
 ctty ftp lab-nas
+
+# FTP 无头传输（无需 TUI，目录递归，进度在 stderr）
+ctty ftp ls lab-nas /pub --format json
+ctty ftp get lab-nas /pub/file.txt ./file.txt
+ctty ftp put lab-nas ./file.txt /pub/file.txt
+ctty ftp mkdir lab-nas /pub/newdir
+ctty ftp rm lab-nas /pub/file.txt
+ctty ftp rmdir lab-nas /pub/olddir
+ctty ftp rename lab-nas /pub/old.txt /pub/new.txt
 
 # 浏览本地文件系统（搜索、新建/删除/重命名、文件详情）
 ctty browse
