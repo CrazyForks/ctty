@@ -62,3 +62,6 @@ release/
 .env.development.local
 .env.test.local
 .env.production.local
+
+.omo/
+demo/
