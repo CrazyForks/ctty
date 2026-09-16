@@ -496,5 +496,8 @@ func (m *snippetFormModel) renderCard(content string) string {
 		content = strings.Join(kept, "\n")
 	}
 	box := container.Width(boxWidth).Render(content)
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Top, box)
+	if isJetBrainsTerminal() {
+		box = alignJetBrainsBox(box)
+	}
+	return placeBox(m.width, m.height, lipgloss.Center, lipgloss.Top, box)
 }

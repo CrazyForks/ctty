@@ -8,13 +8,15 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// Status emoji used in the host list ping column.
+// Status emoji used in the host list ping column and modals (quick peek / batch).
 // Source stays ASCII-only via \U escapes (editors / checkouts that strip emoji).
 var statusEmoji = []string{
 	"\U000026AB", // black circle
 	"\U0001F7E2", // green circle
 	"\U0001F534", // red circle
 	"\U0001F7E1", // yellow circle
+	"\U000026A1", // lightning (⚡)
+	"\U000023F3", // hourglass (⏳)
 }
 
 // jetBrainsAdvanceDeficit: how many columns ansi.StringWidth over-counts
@@ -24,12 +26,14 @@ var jetBrainsAdvanceDeficit = map[string]int{
 	"\U0001F7E2": 0, // green — typically full width 2
 	"\U0001F534": 0, // red
 	"\U0001F7E1": 0, // yellow
+	"\U000026A1": 1, // lightning — advances 1 in JediTerm
+	"\U000023F3": 1, // hourglass — advances 1 in JediTerm
 }
 
 // isJetBrainsTerminal reports whether we are running inside a JetBrains IDE
-// embedded terminal (JediTerm). Only the gray status circle (U+26AB) advances
-// one column there while ansi.StringWidth counts 2; green/red/yellow keep
-// full-width advance 2.
+// embedded terminal (JediTerm). Status circle (U+26AB), lightning (U+26A1),
+// and hourglass (U+23F3) advance one column there while ansi.StringWidth counts 2;
+// green/red/yellow circles keep full-width advance 2.
 func isJetBrainsTerminal() bool {
 	if strings.Contains(os.Getenv("TERMINAL_EMULATOR"), "JetBrains") {
 		return true
@@ -55,7 +59,7 @@ func jetBrainsWidthDeficit(s string) int {
 }
 
 // terminalDisplayWidth returns the column advance of s in the current terminal.
-// On JetBrains/JediTerm, only U+26AB is adjusted (ansi over-counts by 1);
+// On JetBrains/JediTerm, U+26AB, U+26A1, and U+23F3 are adjusted (ansi over-counts by 1);
 // ping result circles (green/red/yellow) keep ansi.StringWidth.
 func terminalDisplayWidth(s string) int {
 	w := ansi.StringWidth(s)
