@@ -173,4 +173,3 @@ func TestTelnetAddForm_ValidationErrorUsesTelnetLocale(t *testing.T) {
 		t.Fatalf("telnet error should not mention FTP site '站点': %s", form.err)
 	}
 }
-

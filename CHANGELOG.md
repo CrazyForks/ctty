@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.1] - 2026-09-16
+
+### Fixed
+
+- **🔌 Serial connections — disconnect, navigation and feedback** — `Ctrl+]`/`Ctrl+C` now correctly disconnects (previously sent to device); disconnect returns to the serial device list with a `Disconnected.` toast (fixes jump to SSH list / stuck `Esc`/`t`/`[`/`T`/`F`/`b`, `ctty serial` still exits); `/dev/cu.Bluetooth-Incoming-Port` on macOS no longer shows `Serial: bad file descriptor` on intentional disconnect (real I/O errors still surface as `Serial: ...`)
+
 ## [1.0.0] - 2026-09-16
 
 ### Added

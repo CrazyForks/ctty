@@ -1,10 +1,13 @@
 package serialconfig
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
+	"strings"
+	"sync"
 	"syscall"
 
 	"go.bug.st/serial"
@@ -42,11 +45,15 @@ func (c *serialExecCommand) Run() error {
 		StopBits: StopBitsFromString(c.dev.StopBits),
 	}
 
-	port, err := serial.Open(c.dev.Device, mode)
+	port, err := serialOpen(c.dev.Device, mode)
 	if err != nil {
 		return fmt.Errorf("opening serial port %s: %w", c.dev.Device, err)
 	}
-	defer port.Close()
+	var closeOnce sync.Once
+	closePort := func() {
+		closeOnce.Do(func() { _ = port.Close() })
+	}
+	defer closePort()
 
 	out := c.stdout
 	if out == nil {
@@ -64,36 +71,117 @@ func (c *serialExecCommand) Run() error {
 	fmt.Fprintf(errOut, "Connected to %s (%s @ %d baud). Press Ctrl+] or Ctrl+C to disconnect.\n",
 		c.dev.Name, c.dev.Device, c.dev.BaudRate)
 
-	// Set stdin to raw mode so keystrokes go directly to the serial port.
-	oldState, err := setRawStdin()
+	oldState, err := setRawStdinFn()
 	if err != nil {
 		return fmt.Errorf("setting raw mode: %w", err)
 	}
-	defer restoreStdin(oldState)
+	defer restoreStdinFn(oldState)
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	defer signal.Stop(sigCh)
 
-	doneCh := make(chan struct{}, 2)
+	errCh := make(chan error, 2)
 
-	// stdin -> serial port
 	go func() {
-		_, _ = io.Copy(port, in)
-		doneCh <- struct{}{}
+		buf := make([]byte, 4096)
+		for {
+			n, rerr := in.Read(buf)
+			if n > 0 {
+				if containsDisconnect(buf[:n]) {
+					closePort()
+					errCh <- nil
+					return
+				}
+				written := 0
+				for written < n {
+					m, werr := port.Write(buf[written:n])
+					if werr != nil {
+						if isPortClosed(werr) {
+							errCh <- nil
+						} else {
+							errCh <- fmt.Errorf("serial write: %w", werr)
+						}
+						return
+					}
+					if m == 0 {
+						break
+					}
+					written += m
+				}
+			}
+			if rerr != nil {
+				if errors.Is(rerr, io.EOF) {
+					errCh <- nil
+				} else {
+					errCh <- rerr
+				}
+				return
+			}
+		}
 	}()
 
-	// serial port -> stdout
 	go func() {
-		_, _ = io.Copy(out, port)
-		doneCh <- struct{}{}
+		_, err := io.Copy(out, port)
+		if err != nil && isPortClosed(err) {
+			err = nil
+		}
+		errCh <- err
 	}()
 
 	select {
-	case <-doneCh:
+	case err := <-errCh:
+		closePort()
+		if err != nil {
+			return err
+		}
 	case <-sigCh:
+		closePort()
 	}
 
-	fmt.Fprintln(errOut, "\nDisconnected.")
 	return nil
+}
+
+func isPortClosed(err error) bool {
+	var pe *serial.PortError
+	if errors.As(err, &pe) {
+		if pe.Code() == serial.PortClosed {
+			return true
+		}
+		if strings.Contains(pe.Error(), "closed") {
+			return true
+		}
+	}
+	var peVal serial.PortError
+	if errors.As(err, &peVal) {
+		if peVal.Code() == serial.PortClosed {
+			return true
+		}
+		if strings.Contains(peVal.Error(), "closed") {
+			return true
+		}
+	}
+	if errors.Is(err, syscall.EBADF) {
+		return true
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "Port has been closed") ||
+		strings.Contains(msg, "bad file descriptor") ||
+		strings.Contains(msg, "file descriptor")
+}
+
+var serialOpen = serial.Open
+
+var setRawStdinFn = setRawStdin
+var restoreStdinFn = restoreStdin
+
+// containsDisconnect reports whether chunk carries Ctrl-] (0x1d) or
+// Ctrl+C (0x03), both advertised as disconnect keys for serial.
+func containsDisconnect(chunk []byte) bool {
+	for _, c := range chunk {
+		if c == 0x1d || c == 0x03 {
+			return true
+		}
+	}
+	return false
 }

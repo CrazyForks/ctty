@@ -457,14 +457,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case serialConnectMsg:
-		// Suspend TUI via tea.Exec — Bubble Tea releases the terminal
-		// to normal mode, calls our ExecCommand.Run() (which opens the
-		// serial port and bridges stdin/stdout), then restores the TUI.
 		m.serialForm = nil
+		if m.serialOnly {
+			return m, tea.Exec(serialconfig.NewExecCommand(msg.device), func(err error) tea.Msg {
+				return tea.Quit()
+			})
+		}
 		m.viewMode = ViewList
 		m.table.Focus()
 		return m, tea.Exec(serialconfig.NewExecCommand(msg.device), func(err error) tea.Msg {
-			return tea.Quit()
+			return serialConnectDoneMsg{err: err}
 		})
 
 	case switchProtocolMsg:
@@ -522,12 +524,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case serialDoneMsg:
 		m.serialForm = nil
 		if m.serialOnly {
-			// Launched via 'ctty serial' — exit entirely
 			return m, tea.Quit
 		}
-		// Return to SSH host list
 		m.viewMode = ViewList
 		m.table.Focus()
+		return m, nil
+
+	case serialConnectDoneMsg:
+		m.serialForm = nil
+		if m.serialOnly {
+			return m, tea.Quit
+		}
+		m.viewMode = ViewSerial
+		m.serialForm = NewSerialForm(m.styles, m.width, m.height)
+		if msg.err != nil {
+			m.serialForm.setStatus("Serial: " + msg.err.Error())
+		} else {
+			m.serialForm.setStatus("Disconnected.")
+		}
 		return m, nil
 
 	case telnetConnectMsg:
