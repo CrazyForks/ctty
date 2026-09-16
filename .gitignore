@@ -64,4 +64,4 @@ release/
 .env.production.local
 
 .omo/
-demo/
+/docs/dev

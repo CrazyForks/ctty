@@ -255,3 +255,33 @@ func RunFTPBrowserMode(siteName, currentVersion string, noUpdateCheck bool) erro
 	}
 	return nil
 }
+
+// RunWebDAVMode starts the TUI directly in the WebDAV site manager view.
+func RunWebDAVMode(currentVersion string, noUpdateCheck bool) error {
+	m := NewModel(nil, "", false, currentVersion, noUpdateCheck)
+	m.webdavSitesForm = NewWebDAVSitesForm(m.styles, m.width, m.height)
+	m.viewMode = ViewWebDAV
+	m.webdavOnly = true
+
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	_, err := p.Run()
+	if err != nil {
+		return fmt.Errorf("error running WebDAV mode: %w", err)
+	}
+	return nil
+}
+
+// RunWebDAVBrowserMode opens the WebDAV browser for a saved site.
+func RunWebDAVBrowserMode(siteName, currentVersion string, noUpdateCheck bool) error {
+	m := NewModel(nil, "", false, currentVersion, noUpdateCheck)
+	m.webdavForm = NewWebDAVFormWithLayout(m.styles, m.width, m.height, siteName, m.appConfig.WebDAVLayout)
+	m.viewMode = ViewWebDAVBrowse
+	m.webdavOnly = true
+
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	_, err := p.Run()
+	if err != nil {
+		return fmt.Errorf("error running WebDAV browser: %w", err)
+	}
+	return nil
+}

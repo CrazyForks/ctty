@@ -61,6 +61,8 @@ const (
 	ViewTelnet
 	ViewFTP
 	ViewFTPBrowse
+	ViewWebDAV
+	ViewWebDAVBrowse
 	ViewLocalBrowser
 )
 
@@ -131,20 +133,24 @@ type Model struct {
 	sftpForm         *sftpFormModel
 	ftpSitesForm     *ftpSitesModel
 	ftpForm          *ftpFormModel
+	webdavSitesForm  *webdavSitesModel
+	webdavForm       *webdavFormModel
 	localBrowserForm *localBrowserModel
 	settingsForm     *settingsFormModel
 	snippetForm      *snippetFormModel
 	updateForm       *updateFormModel
 
 	// Terminal size and styles
-	width        int
-	height       int
-	styles       Styles
-	ready        bool
-	serialOnly   bool // true when launched via 'ctty serial' — Esc exits instead of returning to host list
-	telnetOnly   bool // true when launched via 'ctty telnet' — same exit semantics
-	ftpOnly      bool // true when launched via 'ctty ftp'
-	ftpFromSites bool // browser opened from site manager (Esc returns to list)
+	width           int
+	height          int
+	styles          Styles
+	ready           bool
+	serialOnly      bool // true when launched via 'ctty serial' — Esc exits instead of returning to host list
+	telnetOnly      bool // true when launched via 'ctty telnet' — same exit semantics
+	ftpOnly         bool // true when launched via 'ctty ftp'
+	ftpFromSites    bool // browser opened from site manager (Esc returns to list)
+	webdavOnly      bool // true when launched via 'ctty webdav'
+	webdavFromSites bool // browser opened from site manager (Esc returns to list)
 
 	// Error handling
 	errorMessage string

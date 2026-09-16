@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unrelease]
+
+### Added
+
+- **🌐 WebDAV support** — Complete WebDAV protocol integration matching FTP and SFTP:
+  - **TUI Site Manager & Browser (`W` or `[`/`]` tabs)**: Inventory in `~/.config/ctty/webdav.json`, AES-256-GCM vault password storage (`webdav:` prefix), site add/edit form with Insecure TLS (Skip TLS Verify) toggle and left-aligned controls, dual-pane local|remote browser with single/dual layout toggle (`v`), search (`/`), mkdir (`n`), delete (`d`), rename (`R`), and item details (`i`).
+  - **Settings Integration**: Configurable default WebDAV browser layout (`dual` or `single`) in System Settings (`S` form).
+  - **Symmetric headless CLI**: `ctty webdav ls <site> [path] [--format json]`, `get <site> <remote> <local>`, `put <site> <local> <remote>`, `mkdir`, `rm`, `rmdir` (recursive), `rename`, with shell completion and progress output on stderr.
+  - **Robust Mock Testing**: 100% offline unit and TUI integration tests utilizing in-process `httptest.Server` WebDAV mocks without relying on external live servers.
+
 ## [1.0.1] - 2026-09-16
 
 ### Fixed
@@ -21,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Notes
 
 This is the first stable release of `ctty`. It includes all features from `1.0.0-rc1`, plus the FTP and SFTP headless operations above. 🕹️
+
 
 ## [1.0.0-rc1] - 2026-09-15
 

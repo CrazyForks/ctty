@@ -25,13 +25,14 @@ type settingsFormModel struct {
 	form      *huh.Form
 	viewport  viewport.Model
 
-	langVal       string
-	themeVal      string
-	updateVal     bool
-	disableEscVal bool
-	ftpLayoutVal  string
-	sftpLayoutVal string
-	confirmSave   bool
+	langVal         string
+	themeVal        string
+	updateVal       bool
+	disableEscVal   bool
+	ftpLayoutVal    string
+	sftpLayoutVal   string
+	webdavLayoutVal string
+	confirmSave     bool
 
 	prevTheme string
 	saved     bool
@@ -60,20 +61,22 @@ func NewSettingsForm(styles Styles, width, height int, appConfig *config.AppConf
 
 	ftpLayoutVal := string(config.NormalizeFTPLayout(cfg.FTPLayout))
 	sftpLayoutVal := string(config.NormalizeSFTPLayout(cfg.SFTPLayout))
+	webdavLayoutVal := string(config.NormalizeWebDAVLayout(cfg.WebDAVLayout))
 
 	m := &settingsFormModel{
-		styles:        styles,
-		width:         width,
-		height:        height,
-		appConfig:     cfg,
-		langVal:       langVal,
-		themeVal:      themeVal,
-		updateVal:     updateVal,
-		disableEscVal: disableEscVal,
-		ftpLayoutVal:  ftpLayoutVal,
-		sftpLayoutVal: sftpLayoutVal,
-		confirmSave:   true,
-		prevTheme:     themeVal,
+		styles:          styles,
+		width:           width,
+		height:          height,
+		appConfig:       cfg,
+		langVal:         langVal,
+		themeVal:        themeVal,
+		updateVal:       updateVal,
+		disableEscVal:   disableEscVal,
+		ftpLayoutVal:    ftpLayoutVal,
+		sftpLayoutVal:   sftpLayoutVal,
+		webdavLayoutVal: webdavLayoutVal,
+		confirmSave:     true,
+		prevTheme:       themeVal,
 	}
 
 	m.buildForm()
@@ -152,6 +155,16 @@ func (m *settingsFormModel) buildForm() {
 					huh.NewOption(i18n.T("sftp.layout_single"), "single"),
 				).
 				Value(&m.sftpLayoutVal),
+
+			huh.NewSelect[string]().
+				Key("webdav").
+				Title(i18n.T("settings.webdav_layout_label")).
+				Inline(true).
+				Options(
+					huh.NewOption(i18n.T("webdav.layout_dual"), "dual"),
+					huh.NewOption(i18n.T("webdav.layout_single"), "single"),
+				).
+				Value(&m.webdavLayoutVal),
 
 			huh.NewConfirm().
 				Key("save").
@@ -296,6 +309,7 @@ func (m *settingsFormModel) saveSettings() tea.Cmd {
 		m.appConfig.KeyBindings.DisableEscQuit = m.disableEscVal
 		m.appConfig.FTPLayout = config.FTPLayout(m.ftpLayoutVal)
 		m.appConfig.SFTPLayout = config.SFTPLayout(m.sftpLayoutVal)
+		m.appConfig.WebDAVLayout = config.WebDAVLayout(m.webdavLayoutVal)
 
 		_ = config.SaveAppConfig(&m.appConfig)
 		i18n.Init(m.appConfig.Language)
