@@ -199,3 +199,204 @@ func TestJetBrainsEnvVariants(t *testing.T) {
 		t.Fatal("IDEA_INITIAL_DIRECTORY should detect")
 	}
 }
+
+func TestJetBrainsPeekAndModalEmojiWidth(t *testing.T) {
+	t.Setenv("TERMINAL_EMULATOR", "JetBrains-JediTerm")
+	t.Setenv("JETBRAINS_INTELLIJ_COMMAND_X", "")
+	t.Setenv("IDEA_INITIAL_DIRECTORY", "")
+	if !isJetBrainsTerminal() {
+		t.Fatal("expected JetBrains detection")
+	}
+
+	lightning := "\U000026A1" // ⚡
+	hourglass := "\U000023F3" // ⏳
+
+	if tw, sw := terminalDisplayWidth(lightning), ansi.StringWidth(lightning); tw != sw-1 {
+		t.Fatalf("lightning: terminalDisplayWidth=%d ansi.StringWidth=%d want ansi-1", tw, sw)
+	}
+	if tw, sw := terminalDisplayWidth(hourglass), ansi.StringWidth(hourglass); tw != sw-1 {
+		t.Fatalf("hourglass: terminalDisplayWidth=%d ansi.StringWidth=%d want ansi-1", tw, sw)
+	}
+
+	line := padToTerminalWidth(lightning+" Quick Peek", 30)
+	if tw := terminalDisplayWidth(line); tw != 30 {
+		t.Fatalf("lightning pad terminalDisplayWidth=%d want 30 (%q)", tw, line)
+	}
+}
+
+func TestJetBrainsPeekModalBorderAlignment(t *testing.T) {
+	for _, lang := range []string{i18n.LangZHCN, i18n.LangEN} {
+		t.Run("Lang_"+lang, func(t *testing.T) {
+			i18n.SetLang(lang)
+			t.Setenv("TERMINAL_EMULATOR", "JetBrains-JediTerm")
+			t.Setenv("JETBRAINS_INTELLIJ_COMMAND_X", "")
+			t.Setenv("IDEA_INITIAL_DIRECTORY", "")
+
+			hosts := []config.SSHHost{
+				{Name: "prod-server-01", Hostname: "10.0.0.1"},
+			}
+			m := NewModel(hosts, "", false, "v1.1.0", true)
+			m.width = 100
+			m.height = 30
+			m.peekHost = &hosts[0]
+			m.peekLoading = true
+
+			// 1. Check loading peek modal: contains ⚡ and ⏳
+			loadingBox := m.renderPeekModal()
+			if !strings.Contains(loadingBox, "⚡") || !strings.Contains(loadingBox, "⏳") {
+				t.Fatalf("expected ⚡ and ⏳ in loading modal, got:\n%s", loadingBox)
+			}
+			assertBoxRightBordersAligned(t, "loadingBox", loadingBox)
+
+			loadingPlaced := renderConfirmModal(m.width, m.height, loadingBox)
+			assertPlacedModalBordersAligned(t, "loadingPlaced", loadingPlaced, m.width)
+
+			// 2. Check loaded stats peek modal: contains ⚡ and metrics
+			m.peekLoading = false
+			m.peekStats = &HostStats{
+				Uptime:      "15 days, 4:20",
+				Users:       "2",
+				Load1:       "0.15",
+				Load5:       "0.20",
+				Load15:      "0.18",
+				MemTotalMB:  8192,
+				MemUsedMB:   4096,
+				MemPercent:  50.0,
+				DiskTotal:   "100G",
+				DiskUsed:    "25G",
+				DiskPercent: 25.0,
+			}
+			statsBox := m.renderPeekModal()
+			if !strings.Contains(statsBox, "⚡") {
+				t.Fatalf("expected ⚡ in stats modal, got:\n%s", statsBox)
+			}
+			assertBoxRightBordersAligned(t, "statsBox", statsBox)
+
+			statsPlaced := renderConfirmModal(m.width, m.height, statsBox)
+			assertPlacedModalBordersAligned(t, "statsPlaced", statsPlaced, m.width)
+		})
+	}
+}
+
+func assertBoxRightBordersAligned(t *testing.T, name, box string) {
+	t.Helper()
+	lines := strings.Split(box, "\n")
+	var rightCols []int
+	for _, line := range lines {
+		s := ansi.Strip(line)
+		for _, mark := range []string{"╮", "│", "╯"} {
+			if idx := strings.LastIndex(s, mark); idx >= 0 {
+				rightCols = append(rightCols, terminalDisplayWidth(s[:idx])+1)
+				break
+			}
+		}
+	}
+	if len(rightCols) < 3 {
+		t.Fatalf("%s: expected at least 3 border lines, got %v\n%s", name, rightCols, ansi.Strip(box))
+	}
+	for i := 1; i < len(rightCols); i++ {
+		if rightCols[i] != rightCols[0] {
+			t.Fatalf("%s: right border mismatch at line %d (col=%d, want %d):\n%s",
+				name, i, rightCols[i], rightCols[0], ansi.Strip(box))
+		}
+	}
+}
+
+func assertPlacedModalBordersAligned(t *testing.T, name, modal string, width int) {
+	t.Helper()
+	lines := strings.Split(modal, "\n")
+	var leftCols, rightCols []int
+	for _, line := range lines {
+		s := ansi.Strip(line)
+		if strings.TrimSpace(s) == "" {
+			continue
+		}
+		if w := terminalDisplayWidth(line); w != width {
+			t.Fatalf("%s: line display width=%d want %d (%q)", name, w, width, line)
+		}
+
+		leftIdx := -1
+		for _, mark := range []string{"╭", "│", "╰"} {
+			if idx := strings.Index(s, mark); idx >= 0 {
+				if leftIdx == -1 || idx < leftIdx {
+					leftIdx = idx
+				}
+			}
+		}
+		rightIdx := -1
+		for _, mark := range []string{"╮", "│", "╯"} {
+			if idx := strings.LastIndex(s, mark); idx >= 0 {
+				if idx > rightIdx {
+					rightIdx = idx
+				}
+			}
+		}
+		if leftIdx >= 0 && rightIdx >= 0 {
+			leftCols = append(leftCols, terminalDisplayWidth(s[:leftIdx])+1)
+			rightCols = append(rightCols, terminalDisplayWidth(s[:rightIdx])+1)
+		}
+	}
+
+	if len(leftCols) < 3 {
+		t.Fatalf("%s: expected at least 3 content border lines, got %d", name, len(leftCols))
+	}
+	for i := 1; i < len(leftCols); i++ {
+		if leftCols[i] != leftCols[0] {
+			t.Fatalf("%s: left border mismatch at line %d (col=%d, want %d)",
+				name, i, leftCols[i], leftCols[0])
+		}
+		if rightCols[i] != rightCols[0] {
+			t.Fatalf("%s: right border mismatch at line %d (col=%d, want %d)",
+				name, i, rightCols[i], rightCols[0])
+		}
+	}
+}
+
+func TestStandardTerminalPeekModalBorderAlignment(t *testing.T) {
+	for _, lang := range []string{i18n.LangZHCN, i18n.LangEN} {
+		t.Run("Lang_"+lang, func(t *testing.T) {
+			i18n.SetLang(lang)
+			t.Setenv("TERMINAL_EMULATOR", "xterm-256color")
+			t.Setenv("JETBRAINS_INTELLIJ_COMMAND_X", "")
+			t.Setenv("IDEA_INITIAL_DIRECTORY", "")
+			if isJetBrainsTerminal() {
+				t.Fatal("expected standard terminal detection")
+			}
+
+			hosts := []config.SSHHost{
+				{Name: "prod-server-01", Hostname: "10.0.0.1"},
+			}
+			m := NewModel(hosts, "", false, "v1.1.0", true)
+			m.width = 100
+			m.height = 30
+			m.peekHost = &hosts[0]
+			m.peekLoading = true
+
+			loadingBox := m.renderPeekModal()
+			assertBoxRightBordersAligned(t, "loadingBox", loadingBox)
+
+			loadingPlaced := renderConfirmModal(m.width, m.height, loadingBox)
+			assertPlacedModalBordersAligned(t, "loadingPlaced", loadingPlaced, m.width)
+
+			m.peekLoading = false
+			m.peekStats = &HostStats{
+				Uptime:      "15 days, 4:20",
+				Users:       "2",
+				Load1:       "0.15",
+				Load5:       "0.20",
+				Load15:      "0.18",
+				MemTotalMB:  8192,
+				MemUsedMB:   4096,
+				MemPercent:  50.0,
+				DiskTotal:   "100G",
+				DiskUsed:    "25G",
+				DiskPercent: 25.0,
+			}
+			statsBox := m.renderPeekModal()
+			assertBoxRightBordersAligned(t, "statsBox", statsBox)
+
+			statsPlaced := renderConfirmModal(m.width, m.height, statsBox)
+			assertPlacedModalBordersAligned(t, "statsPlaced", statsPlaced, m.width)
+		})
+	}
+}

@@ -168,8 +168,9 @@ func renderCardBox(container lipgloss.Style, width int, lines ...string) string 
 	if inner < 4 {
 		inner = 4
 	}
-	return container.Width(inner).Align(lipgloss.Left).
+	box := container.Width(inner).Align(lipgloss.Left).
 		Render(lipgloss.JoinVertical(lipgloss.Left, lines...))
+	return alignJetBrainsBox(box)
 }
 
 // renderConfirmModal paints a confirmation card centered on a blank
@@ -182,7 +183,7 @@ func renderCardBox(container lipgloss.Style, width int, lines ...string) string 
 func renderConfirmModal(width, height int, box string) string {
 	lines := strings.Split(box, "\n")
 	if len(lines) <= height {
-		return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, box)
+		return placeBox(width, height, lipgloss.Center, lipgloss.Center, box)
 	}
 
 	// Degenerate terminal: drop blank interior rows (the container's
@@ -210,7 +211,7 @@ func renderConfirmModal(width, height int, box string) string {
 		lines = trimmed
 	}
 
-	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, strings.Join(lines, "\n"))
+	return placeBox(width, height, lipgloss.Center, lipgloss.Center, strings.Join(lines, "\n"))
 }
 
 // wrapInfoLines expands logical body lines into physical rows at the given
