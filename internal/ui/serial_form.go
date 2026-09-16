@@ -67,6 +67,10 @@ type serialConnectMsg struct {
 // serialDoneMsg tells the parent model to return to the SSH host list.
 type serialDoneMsg struct{}
 
+// serialConnectDoneMsg is sent when the serial bridge exits; it carries
+// a non-nil err only for non-PortClosed failures.
+type serialConnectDoneMsg struct{ err error }
+
 // serialBackMsg tells the parent to go back to host list (no state change).
 type serialBackMsg struct{}
 

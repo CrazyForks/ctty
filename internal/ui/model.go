@@ -72,7 +72,6 @@ type switchProtocolMsg struct {
 // reloadConfigMsg signals that the external editor has exited and config should reload
 type reloadConfigMsg struct{}
 
-
 // PortForwardType defines the type of port forwarding
 type PortForwardType int
 
