@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - **Symmetric headless CLI**: `ctty webdav ls <site> [path] [--format json]`, `get <site> <remote> <local>`, `put <site> <local> <remote>`, `mkdir`, `rm`, `rmdir` (recursive), `rename`, with shell completion and progress output on stderr.
   - **Robust Mock Testing**: 100% offline unit and TUI integration tests utilizing in-process `httptest.Server` WebDAV mocks without relying on external live servers.
 
+### Fixed
+
+- **JetBrains update-success dialog alignment** — Corrected the one-column right-border offset caused by the check mark emoji (U+2705) in English and Chinese update-success messages.
+- **Quick Peek SSH error details** — Failed health probes now show SSH diagnostic output alongside the exit status instead of only `exit status 255`. Terminal control sequences are removed and long diagnostics are limited to their final 512 characters. This improves error reporting; it does not resolve the underlying intermittent SSH disconnection.
+
 ## [1.0.1] - 2026-09-16
 
 ### Fixed

@@ -709,7 +709,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.peekOpen && m.peekHost != nil && m.peekHost.Name == msg.hostName {
 			m.peekLoading = false
 			if msg.err != nil {
-				m.peekErr = msg.err.Error()
+				m.peekErr = msg.errorText()
 				m.peekStats = nil
 			} else {
 				m.peekStats = msg.stats
