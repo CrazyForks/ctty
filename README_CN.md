@@ -11,13 +11,13 @@
 [![License](https://img.shields.io/github/license/zsuroy/ctty?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey?style=for-the-badge)](https://github.com/zsuroy/ctty/releases)
 
-> **一个轻量级的一体化终端连接管理器 —— SSH、串口、Telnet、SFTP、FTP 尽在一个 TUI** 🔥
+> **一个轻量级的一体化终端连接管理器 —— SSH、串口、Telnet、SFTP、FTP、WebDAV 尽在一个 TUI** 🔥
 
-ctty 是一个快速、原生的终端工具，用于管理你的所有连接 —— SSH 主机、串口设备、Telnet 端点、SFTP 文件传输、FTP 站点 —— 无需 Electron 的开销。使用 Go 编写，拥有直观的 TUI 界面，将 Tabby 等图形化连接管理器的便利性带到终端中，零臃肿。
+ctty 是一个快速、原生的终端工具，用于管理你的所有连接 —— SSH 主机、串口设备、Telnet 端点、SFTP 文件传输、FTP 站点、WebDAV 云盘 —— 无需 Electron 的开销。使用 Go 编写，拥有直观的 TUI 界面，将 Tabby 等图形化连接管理器的便利性带到终端中，零臃肿。
 
 **为什么选择 ctty？**
 - **嫌 Tabby 太重？** ctty 是单个约 5MB 的二进制文件，没有 Electron，没有浏览器引擎 —— 纯 Go
-- **需要一个工具同时搞定串口 + SSH + SFTP + FTP？** 大多数终端模拟器只做 SSH；ctty 全覆盖
+- **需要一个工具同时搞定串口 + SSH + SFTP + FTP + WebDAV？** 大多数终端模拟器只做 SSH；ctty 全覆盖
 - **想留在终端里？** 不用在多个应用间切换 —— 一切都由键盘驱动
 
 <p align="center">
@@ -34,7 +34,7 @@ ctty 是一个快速、原生的终端工具，用于管理你的所有连接 �
 - **🎨 精致优雅的 TUI 终端界面** - 极客风全键盘交互终端 UI，零垂直跳动，平滑稳定
 - **⚡ 快速连接与健康速览** - 回车一键直连，或按 `v`（或 `P`）呼出**轻量健康速览卡片**，无需进入完整 Shell 即可后台非交互采集并以彩色进度条查看 Uptime、CPU 负载、内存与根磁盘占用
 - **📦 空格多选与批量操作** - 按 `Space` 切换勾选（带 `[ ]` / `[✓]` 复选框及光标自动下移），`Ctrl+A` 一键全选/反选；支持针对已选主机的批量连通性探测（`p`）、批量复制连接命令（`y`）、批量并发执行远程代码片段并聚合查看结果（`x`）
-- **🔄 全协议平滑切换与直达** - 任意页面按 `[` / `]` 循环切换协议标签页，或直接按 `t`（串口）、`T`（Telnet）、`F`（FTP）、`b`（本地文件浏览器）随时跳转对应模块，告别反复退回主页
+- **🔄 全协议平滑切换与直达** - 任意页面按 `[` / `]` 循环切换协议标签页，或直接按 `t`（串口）、`T`（Telnet）、`F`（FTP）、`W`（WebDAV）、`b`（本地文件浏览器）随时跳转对应模块，告别反复退回主页
 - **🏷️ Tag 颜色标记与抽屉式快滤** - 标签自动彩色哈希高亮区分（如 `#prod` 红色、`#dev` 绿色、`#db` 紫色）；按 `w` 呼出居中标签抽屉，清晰展示标签主机统计数量，按数字键 `1`-`9` 即可一键选定过滤，按 `c` 随时清除；特殊标签 `hidden` 从列表中隐藏但保持可连接
 - **📝 极速系统编辑器直连** - 按 `E` 即可用系统编辑器（`$EDITOR`，如 vim、nano、notepad）直接编辑当前的 SSH 配置文件，退出编辑器后自动无缝热重载
 - **📋 通用剪贴板** - 按 `y` 复制 SSH 连接命令，自动支持 OSC 52 终端转义序列，在远程 SSH 登录或 tmux 环境下也可同步写入宿主机系统剪贴板
@@ -46,6 +46,7 @@ ctty 是一个快速、原生的终端工具，用于管理你的所有连接 �
 - **📡 Telnet 连接** - 原生 RFC 854 telnet 客户端（无需系统 telnet）：保存并管理实验室设备、控制台服务器和传统设备；一键探测可达性
 - **📂 SFTP 文件传输** - 功能完整的 SFTP 浏览器（`o` 键）：远程浏览、带进度和取消的上传/下载队列、传输完成终端响铃（`\a`）、搜索、新建/删除，以及无头 CLI 传输（`put`/`get`/`scp` + `sftp ls/mkdir/rm/rmdir/rename`）
 - **📁 FTP 站点管理** - 纯 FTP 支持（`F` 键），覆盖没有 SSH 的主机：带标签的站点清单、本地|远端双栏浏览器、双窗格新建/删除/重命名、单双栏切换、密码进加密保险库，以及 CLI 传输（`ftp ls/get/put/mkdir/rm/rmdir/rename`）
+- **🌐 WebDAV 站点管理** - WebDAV 支持（`W` 键），直连云存储与网盘（Nextcloud、ownCloud、NAS、Apache/Nginx WebDAV）：带标签的站点清单、本地|远端双栏浏览器、目录递归传输、单双栏切换、密码进加密保险库，以及无头 CLI 传输（`webdav ls/get/put/mkdir/rm/rmdir/rename`）
 - **🗂️ 本地文件浏览器** - 独立的本地文件管理器（`b` 键或 `ctty browse [路径]`）：浏览、搜索、排序、新建/删除/重命名（含确认）、文件详情、默认应用打开、文件管理器定位
 - **🔑 密码存储与免密自动登录** - 支持在本地 AES-256-GCM 加密保险库（`~/.config/ctty/credentials.json`，`0600` 权限）中安全保存密码，基于 OpenSSH 原生 `SSH_ASKPASS` 协议实现一键免密直连（零第三方依赖，完美兼容 macOS、Linux、Windows 和 Termux）
 - **🖥️ 分屏与极小窗口完美适配** - 所有表单与弹窗（添加/编辑主机、端口转发、帮助菜单、主机详情、速览卡片、批量执行）均采用焦点跟随的动态视口滚动，固定头部与底部导航；在 tmux/Zellij 分屏、VS Code/JetBrains 下方终端、i3/Sway 平铺窗口（即使只有 8~12 行）下均可丝滑操作，绝无高度拦截与内容裁切
@@ -167,7 +168,7 @@ ctty
 - `w` - 打开**标签抽屉过滤弹窗**（数字键 `1`-`9` 或 `Enter` 快速选定，`c` 清除）
 - `c` - 清除当前标签过滤
 - `E` - 用系统编辑器（vim/nano/notepad）直接编辑当前 SSH 配置文件（退出自动热重载）
-- `[` / `]` - 切换至上一个 / 下一个协议 Tab（SSH ⇄ 串口 ⇄ Telnet ⇄ FTP ⇄ 本地浏览器）
+- `[` / `]` - 切换至上一个 / 下一个协议 Tab（SSH ⇄ 串口 ⇄ Telnet ⇄ FTP ⇄ WebDAV ⇄ 本地浏览器）
 - `g` / `Home` - 快速跳至首行
 - `G` / `End` - 快速跳至末行
 - `1`-`9` - 快速跳至指定行号
@@ -181,6 +182,7 @@ ctty
 - `T` - 打开 Telnet 设备管理器
 - `o` - 打开选中主机的 SFTP 文件浏览器
 - `F` - 打开 FTP 站点管理器
+- `W` - 打开 WebDAV 站点管理器
 - `b` - 打开本地文件浏览器
 - `S` - 打开系统设置与偏好配置（语言、自动更新、ESC 行为）
 - `U` - 打开自更新弹窗（有可用更新时）
@@ -396,6 +398,58 @@ ctty ftp rename lab-nas /pub/old.txt /pub/new.txt
 ```
 进度输出到 stderr；目录递归；密码复用加密保险库（`ftp:` 前缀）或匿名。
 
+### WebDAV 文件传输
+
+在主界面按 `W`（Shift+W）或按 `[` / `]` 切换标签页打开 WebDAV 站点管理器——适用于 Nextcloud、ownCloud、NAS 服务器、Apache/Nginx WebDAV 或任意符合 RFC 4918 的云存储端点。
+
+**WebDAV 站点管理器：**
+- `Enter` - 连接并打开文件浏览器
+- `a` - 添加 WebDAV 站点（名称、URL、用户名、可选密码、跳过 TLS 验证开关、标签）
+- `e` - 编辑站点
+- `d` - 删除站点（带居中确认弹窗）
+- `Space` / `Ctrl+A` - 多选站点批量删除
+- `y` - 复制站点 URL
+- `i` - 查看站点详情
+- `p` - 探测连通性
+- `w` - 按标签过滤
+- `/` - 搜索过滤站点
+
+站点保存在 `~/.config/ctty/webdav.json`（0600）。密码加密存放在共享凭据保险库（`~/.config/ctty/credentials.json`，WebDAV 条目以 `webdav:` 开头）——使用安全的 AES-256-GCM 加密。
+
+**WebDAV 浏览器（本地 | 远端双栏）：**
+- `Tab` / `Shift+Tab` - 在本地与远端窗格之间切换焦点
+- `Enter` / `l` / `→` - 进入目录或下载/上传选中的文件
+- `h` / `←` / `Backspace` - 返回上一级父目录
+- `v` - 切换单栏与双栏布局（设置自动持久化保存）
+- `i` - 查看文件/目录详情信息（大小、修改时间、路径）
+- `n` - 新建目录（在当前获焦窗格中）
+- `d` - 删除文件或目录（在当前获焦窗格中，含确认弹窗）
+- `R` - 重命名文件或目录（在当前获焦窗格中）
+- `r` - 刷新目录列表
+- `/` - 搜索/过滤当前目录
+- `Esc` - 取消正在进行的传输 / 返回
+
+文件管理（`n`/`d`/`R`）在两个窗格都可用。窄终端（不足 80 列）自动切换为单栏显示。
+
+你也可以直接打开站点管理器或指定站点的浏览器：
+```bash
+ctty webdav              # WebDAV 站点管理器 TUI
+ctty webdav nextcloud    # 直接打开指定站点的浏览器
+```
+
+**无头 WebDAV 传输：**
+```bash
+ctty webdav ls nextcloud                             # 列出远端目录
+ctty webdav ls nextcloud /Documents --format json    # 机器可读列表
+ctty webdav get nextcloud /Documents/report.pdf ./report.pdf
+ctty webdav put nextcloud ./backup/ /RemoteBackup/
+ctty webdav mkdir nextcloud /Documents/Archive
+ctty webdav rm nextcloud /Documents/old.pdf
+ctty webdav rmdir nextcloud /Documents/TempDir       # 递归删除远程目录
+ctty webdav rename nextcloud /Documents/a.pdf /Documents/b.pdf
+```
+进度输出到 stderr；目录支持自动递归；密码安全读取加密保险库。
+
 ### 端口转发
 
 ctty 提供直观的界面来设置 SSH 端口转发。在选中主机时按 `f` 打开端口转发设置：
@@ -571,6 +625,19 @@ ctty ftp mkdir lab-nas /pub/newdir
 ctty ftp rm lab-nas /pub/file.txt
 ctty ftp rmdir lab-nas /pub/olddir
 ctty ftp rename lab-nas /pub/old.txt /pub/new.txt
+
+# 打开 WebDAV 站点管理器，或直接打开指定站点的浏览器
+ctty webdav
+ctty webdav nextcloud
+
+# WebDAV 无头传输（无需 TUI，目录递归，进度在 stderr）
+ctty webdav ls nextcloud /Documents --format json
+ctty webdav get nextcloud /Documents/report.pdf ./report.pdf
+ctty webdav put nextcloud ./backup/ /RemoteBackup/
+ctty webdav mkdir nextcloud /Documents/Archive
+ctty webdav rm nextcloud /Documents/old.pdf
+ctty webdav rmdir nextcloud /Documents/TempDir
+ctty webdav rename nextcloud /Documents/a.pdf /Documents/b.pdf
 
 # 浏览本地文件系统（搜索、新建/删除/重命名、文件详情）
 ctty browse
@@ -1126,6 +1193,7 @@ ctty/
 │   ├── telnet.go       # Telnet 管理 / 直连命令
 │   ├── sftp.go         # SFTP 文件传输命令
 │   ├── ftp.go          # FTP 站点管理 / 浏览器命令
+│   ├── webdav.go       # WebDAV 站点管理 / 浏览器命令
 │   ├── info.go         # 机器可读 JSON 主机信息
 │   └── completion.go   # Shell 补全脚本生成
 ├── internal/
@@ -1159,6 +1227,9 @@ ctty/
 │   ├── ftpconfig/      # FTP 站点清单 (~/.config/ctty/ftp.json)
 │   ├── ftpclient/      # 纯 FTP 传输层（列表、下载、上传、新建、删除、重命名）
 │   ├── ftpcred/        # FTP 密码的加密保险库存储（ftp: 前缀）
+│   ├── webdavconfig/   # WebDAV 站点清单 (~/.config/ctty/webdav.json)
+│   ├── webdavclient/   # WebDAV 传输层（列表、下载、上传、新建、删除、重命名）
+│   ├── webdavcred/     # WebDAV 密码的加密保险库存储（webdav: 前缀）
 │   ├── version/        # 版本检查和更新
 │   │   ├── version.go  # GitHub 发布检查和版本比较
 │   │   └── version_test.go # 版本解析和比较测试
@@ -1184,6 +1255,8 @@ ctty/
 │   │   ├── telnet_form.go         # Telnet 设备列表 UI（含可达性探测）
 │   │   ├── ftp_sites.go           # FTP 站点管理器 UI
 │   │   ├── ftp_view.go            # FTP 本地|远端双栏浏览器 UI
+│   │   ├── webdav_sites.go        # WebDAV 站点管理器 UI
+│   │   ├── webdav_view.go         # WebDAV 双栏文件浏览器 UI
 │   │   └── sftp_view.go           # SFTP 远程与本地双模文件浏览器
 │   └── validation/     # 输入验证
 │       └── ssh.go      # SSH 配置验证

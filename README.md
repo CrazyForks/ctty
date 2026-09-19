@@ -13,13 +13,13 @@
 [![License](https://img.shields.io/github/license/zsuroy/ctty?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey?style=for-the-badge)](https://github.com/zsuroy/ctty/releases)
 
-> **A lightweight, all-in-one connection manager — SSH, serial, telnet, SFTP, and FTP in a single TUI** 🔥
+> **A lightweight, all-in-one connection manager — SSH, serial, telnet, SFTP, FTP, and WebDAV in a single TUI** 🔥
 
-ctty is a fast, native terminal tool for managing all your connections — SSH hosts, serial devices, telnet endpoints, SFTP file transfers, and FTP sites — without the overhead of Electron apps. Built with Go and featuring an intuitive TUI interface, it brings the convenience of GUI connection managers like Tabby to the terminal, with zero bloat.
+ctty is a fast, native terminal tool for managing all your connections — SSH hosts, serial devices, telnet endpoints, SFTP file transfers, FTP sites, and WebDAV servers — without the overhead of Electron apps. Built with Go and featuring an intuitive TUI interface, it brings the convenience of GUI connection managers like Tabby to the terminal, with zero bloat.
 
 **Why ctty?**
 - **Tabby too heavy?** ctty is a single ~5MB binary, no Electron, no browser engine — just pure Go
-- **Need serial + SSH + SFTP + FTP in one tool?** Most terminal emulators only do SSH; ctty covers them all
+- **Need serial + SSH + SFTP + FTP + WebDAV in one tool?** Most terminal emulators only do SSH; ctty covers them all
 - **Native telnet client built in** — no system `telnet` binary required (macOS dropped it, Windows and Termux need extras); IAC-aware with conservative negotiation
 - **Want to stay in the terminal?** No context switching between apps — everything is keyboard-driven
 
@@ -37,7 +37,7 @@ ctty is a fast, native terminal tool for managing all your connections — SSH h
 - **🎨 Beautiful TUI Interface** - Navigate your SSH hosts with an elegant, interactive terminal UI and zero vertical layout jitter
 - **⚡ Quick Connect & Health Peek** - Connect instantly with `Enter` or inspect real-time system metrics (uptime, CPU load, memory bar, root disk space) via **Quick Peek** (`v` / `P`) without opening a full shell
 - **📦 Multi-Select & Batch Exec** - Press `Space` to multi-select hosts with visual `[ ]` / `[✓]` checkboxes, `Ctrl+A` to select all, `p` to probe selected hosts, `y` to copy commands, and `x` to batch-execute remote snippets in parallel with an aggregated scrollable results modal
-- **🔄 Unified Cross-Protocol Navigation** - Switch between SSH, Serial (`t`), Telnet (`T`), FTP (`F`), and Local File Browser (`b`) directly via hotkeys or `[` / `]` tabs without leaving your current view
+- **🔄 Unified Cross-Protocol Navigation** - Switch between SSH, Serial (`t`), Telnet (`T`), FTP (`F`), WebDAV (`W`), and Local File Browser (`b`) directly via hotkeys or `[` / `]` tabs without leaving your current view
 - **🏷️ Tag Organization & Quick Drawer** - Organize hosts with automatic color-coding (e.g., `#prod` in red, `#dev` in green); press `w` to open an interactive Tag Drawer with host counts and 1-key filtering (`1`-`9`), or use `hidden` tag to hide sensitive hosts
 - **📝 Direct Config Editing** - Press `E` to open your active SSH configuration directly in `$EDITOR` / `$VISUAL` (vim, nano, notepad) with automatic live config reload upon exit
 - **📋 Universal Clipboard** - Copy commands (`y`) seamlessly across local terminals, remote SSH sessions, and tmux via OSC 52 fallback
@@ -49,6 +49,7 @@ ctty is a fast, native terminal tool for managing all your connections — SSH h
 - **📡 Telnet Connections** - Native RFC 854 telnet client (no system telnet needed): save and manage lab equipment, console servers, and legacy devices; reachability probe with one keypress
 - **📂 SFTP File Transfer** - Full-featured SFTP browser (`o` key) with remote browsing, upload/download queue with progress and cancel, transfer bell (`\a`), search, mkdir/delete, plus headless CLI transfers (`put`/`get`/`scp` + `sftp ls/mkdir/rm/rmdir/rename`)
 - **📁 FTP Site Manager** - Plain-FTP support (`F` key) for hosts without SSH: tagged site inventory, dual-pane local|remote browser, mkdir/delete/rename in both panes, single/dual layout toggle, passwords in the encrypted vault, plus headless CLI transfers (`ftp ls/get/put/mkdir/rm/rmdir/rename`)
+- **🌐 WebDAV Site Manager** - WebDAV support (`W` key) for cloud storage (Nextcloud, ownCloud, NAS, Apache/Nginx WebDAV): tagged site inventory, dual-pane browser, directory recursion, single/dual layout toggle, passwords in the encrypted vault, plus headless CLI operations (`webdav ls/get/put/mkdir/rm/rmdir/rename`)
 - **🗂️ Local File Browser** - Standalone local filesystem manager (`b` key or `ctty browse [path]`): navigate, search, sort, mkdir/delete/rename with confirms, file details, open-with-default-app, reveal in file manager
 - **🔑 Password Storage & Zero-Touch Auto-Login** - Save SSH passwords securely in a local AES-256-GCM encrypted vault (`~/.config/ctty/credentials.json`, `0600` permissions) with native OpenSSH `SSH_ASKPASS` protocol bridge (zero third-party dependencies, works on macOS, Linux, Windows, and Termux)
 - **🖥️ Split-Pane & Small Terminal Friendly** - All forms and dialogs (Add/Edit Host, Port Forwarding, Host Info, Help Menu, Quick Peek, Batch Exec) feature focus-following dynamic viewport scrolling with fixed headers/footers. Works flawlessly in tmux/Zellij splits, VS Code/JetBrains embedded terminals, and tiling WMs (i3/Sway) down to 8~12 lines with zero height blocking or truncation
@@ -170,7 +171,7 @@ ctty
 - `w` - Open interactive **Tag Filter Drawer** (`1`-`9` or `Enter` to filter, `c` to clear)
 - `c` - Clear active tag filter
 - `E` - Open active SSH configuration file directly in `$EDITOR` (vim/nano/notepad)
-- `[` / `]` - Switch to previous / next protocol tab (SSH ⇄ Serial ⇄ Telnet ⇄ FTP ⇄ Local Browser)
+- `[` / `]` - Switch to previous / next protocol tab (SSH ⇄ Serial ⇄ Telnet ⇄ FTP ⇄ WebDAV ⇄ Local Browser)
 - `g` / `Home` - Jump to first row
 - `G` / `End` - Jump to last row
 - `1`-`9` - Quick jump to row
@@ -184,6 +185,7 @@ ctty
 - `T` - Open telnet device manager
 - `o` - Open SFTP file browser for selected host
 - `F` - Open FTP site manager
+- `W` - Open WebDAV site manager
 - `b` - Open local file browser
 - `S` - Open Settings & Preferences (Language, Updates, ESC behavior)
 - `U` - Open self-update modal (when an update is available)
@@ -401,6 +403,58 @@ ctty ftp rename lab-nas /pub/old.txt /pub/new.txt
 ```
 Progress is on stderr; directories are recursive; passwords are reused from the encrypted vault (`ftp:` names) or anonymous.
 
+### WebDAV File Transfer
+
+Press `W` (Shift+W) from the main TUI or cycle tabs with `[` / `]` to open the WebDAV site manager — connect to Nextcloud, ownCloud, NAS servers, Apache/Nginx WebDAV, or any RFC 4918 compliant endpoint.
+
+**WebDAV site manager:**
+- `Enter` - Connect and open browser
+- `a` - Add WebDAV site (name, URL, username, optional password, insecure TLS toggle, tags)
+- `e` - Edit site
+- `d` - Delete site (with confirmation modal)
+- `Space` / `Ctrl+A` - Multi-select sites for batch deletion
+- `y` - Copy URL
+- `i` - Inspect site details
+- `p` - Probe connectivity
+- `w` - Filter by tag
+- `/` - Search sites
+
+Saved sites live in `~/.config/ctty/webdav.json` (0600). Passwords are encrypted in the shared vault (`~/.config/ctty/credentials.json`, WebDAV entries under `webdav:` names) using AES-256-GCM.
+
+**WebDAV browser (dual-pane local | remote):**
+- `Tab` / `Shift+Tab` - Toggle focus between local and remote pane
+- `Enter` / `l` / `→` - Open directory or start download/upload
+- `h` / `←` / `Backspace` - Navigate up to parent directory
+- `v` - Toggle between dual-pane and single-pane layout (persisted)
+- `i` - Inspect entry details (size, modified, path)
+- `n` - Create new directory (in focused pane)
+- `d` - Delete file or directory (in focused pane, with confirm)
+- `R` - Rename file or directory (in focused pane)
+- `r` - Refresh listing
+- `/` - Search/filter files
+- `Esc` - Cancel transfer / go back
+
+File management (`n`/`d`/`R`) works in both panes. Narrow terminals (under 80 columns) automatically adapt to single-pane layout.
+
+You can also open the site manager or browser directly from CLI:
+```bash
+ctty webdav              # WebDAV site manager TUI
+ctty webdav nextcloud    # Open browser directly for a saved site
+```
+
+**Headless WebDAV operations:**
+```bash
+ctty webdav ls nextcloud                             # List remote directory
+ctty webdav ls nextcloud /Documents --format json    # Machine-readable listing
+ctty webdav get nextcloud /Documents/report.pdf ./report.pdf
+ctty webdav put nextcloud ./backup/ /RemoteBackup/
+ctty webdav mkdir nextcloud /Documents/Archive
+ctty webdav rm nextcloud /Documents/old.pdf
+ctty webdav rmdir nextcloud /Documents/TempDir       # Recursive directory deletion
+ctty webdav rename nextcloud /Documents/a.pdf /Documents/b.pdf
+```
+Progress is on stderr; directories are recursive; passwords are encrypted in the vault.
+
 
 ### Port Forwarding
 
@@ -577,6 +631,19 @@ ctty ftp mkdir lab-nas /pub/newdir
 ctty ftp rm lab-nas /pub/file.txt
 ctty ftp rmdir lab-nas /pub/olddir
 ctty ftp rename lab-nas /pub/old.txt /pub/new.txt
+
+# Open WebDAV site manager, or a site browser directly
+ctty webdav
+ctty webdav nextcloud
+
+# WebDAV headless transfers (no TUI, dirs recursive, progress on stderr)
+ctty webdav ls nextcloud /Documents --format json
+ctty webdav get nextcloud /Documents/report.pdf ./report.pdf
+ctty webdav put nextcloud ./backup/ /RemoteBackup/
+ctty webdav mkdir nextcloud /Documents/Archive
+ctty webdav rm nextcloud /Documents/old.pdf
+ctty webdav rmdir nextcloud /Documents/TempDir
+ctty webdav rename nextcloud /Documents/a.pdf /Documents/b.pdf
 
 # Browse the local filesystem (search, mkdir/delete/rename, file details)
 ctty browse
@@ -1132,6 +1199,7 @@ ctty/
 │   ├── telnet.go       # Telnet manager / direct-connect command
 │   ├── sftp.go         # SFTP file browser command
 │   ├── ftp.go          # FTP site manager / browser command
+│   ├── webdav.go       # WebDAV site manager / browser command
 │   ├── info.go         # Machine-readable JSON host info
 │   └── completion.go   # Shell tab completion script generator
 ├── internal/
@@ -1165,6 +1233,9 @@ ctty/
 │   ├── ftpconfig/      # FTP site inventory (~/.config/ctty/ftp.json)
 │   ├── ftpclient/      # Plain-FTP transport (list, download, upload, mkdir, delete, rename)
 │   ├── ftpcred/        # FTP passwords in the encrypted vault (ftp: names)
+│   ├── webdavconfig/   # WebDAV site inventory (~/.config/ctty/webdav.json)
+│   ├── webdavclient/   # WebDAV transport (list, download, upload, mkdir, delete, rename)
+│   ├── webdavcred/     # WebDAV passwords in the encrypted vault (webdav: names)
 │   ├── version/        # Version checking and updates
 │   │   ├── version.go  # GitHub release checking and version comparison
 │   │   └── version_test.go # Version parsing and comparison tests
@@ -1189,6 +1260,8 @@ ctty/
 │   │   ├── telnet_form.go         # Telnet device list UI with reachability probe
 │   │   ├── ftp_sites.go           # FTP site manager UI
 │   │   ├── ftp_view.go            # FTP dual-pane local|remote browser UI
+│   │   ├── webdav_sites.go        # WebDAV site manager UI
+│   │   ├── webdav_view.go         # WebDAV dual-pane browser UI
 │   │   └── sftp_view.go           # SFTP remote & local browser UI
 │   └── validation/     # Input validation
 │       └── ssh.go      # SSH config validation

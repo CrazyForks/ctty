@@ -8,8 +8,9 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// Status emoji used in the host list ping column and modals (quick peek / batch).
-// Source stays ASCII-only via \U escapes (editors / checkouts that strip emoji).
+// Status emoji used in the host list ping column and modals (quick peek /
+// batch / self-update). Source stays ASCII-only via \U escapes (editors /
+// checkouts that strip emoji).
 var statusEmoji = []string{
 	"\U000026AB", // black circle
 	"\U0001F7E2", // green circle
@@ -17,6 +18,7 @@ var statusEmoji = []string{
 	"\U0001F7E1", // yellow circle
 	"\U000026A1", // lightning (⚡)
 	"\U000023F3", // hourglass (⏳)
+	"\U00002705", // white heavy check mark (✅)
 }
 
 // jetBrainsAdvanceDeficit: how many columns ansi.StringWidth over-counts
@@ -28,6 +30,7 @@ var jetBrainsAdvanceDeficit = map[string]int{
 	"\U0001F7E1": 0, // yellow
 	"\U000026A1": 1, // lightning — advances 1 in JediTerm
 	"\U000023F3": 1, // hourglass — advances 1 in JediTerm
+	"\U00002705": 1, // check mark — advances 1 in JediTerm
 }
 
 // isJetBrainsTerminal reports whether we are running inside a JetBrains IDE

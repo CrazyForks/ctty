@@ -98,6 +98,9 @@ func (m Model) Init() tea.Cmd {
 	if m.ftpForm != nil && m.viewMode == ViewFTPBrowse {
 		cmds = append(cmds, m.ftpForm.Init())
 	}
+	if m.webdavForm != nil && m.viewMode == ViewWebDAVBrowse {
+		cmds = append(cmds, m.webdavForm.Init())
+	}
 
 	return tea.Batch(cmds...)
 }
@@ -182,6 +185,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.ftpForm != nil {
 			m.ftpForm.Update(msg)
+		}
+		if m.webdavSitesForm != nil {
+			m.webdavSitesForm.Update(msg)
+		}
+		if m.webdavForm != nil {
+			m.webdavForm.Update(msg)
 		}
 		if m.localBrowserForm != nil {
 			m.localBrowserForm.Update(msg)
@@ -470,12 +479,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 
 	case switchProtocolMsg:
-		if m.serialOnly || m.telnetOnly || m.ftpOnly {
+		if m.serialOnly || m.telnetOnly || m.ftpOnly || m.webdavOnly {
 			return m, nil
 		}
 		// Clean up any active sub-forms or connections
 		if m.viewMode == ViewFTPBrowse && m.ftpForm != nil && m.ftpForm.client != nil {
 			_ = m.ftpForm.client.Close()
+		}
+		if m.viewMode == ViewWebDAVBrowse && m.webdavForm != nil && m.webdavForm.client != nil {
+			_ = m.webdavForm.client.Close()
 		}
 		if m.viewMode == ViewSFTP && m.sftpForm != nil && m.sftpForm.client != nil {
 			_ = m.sftpForm.client.Close()
@@ -484,6 +496,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.telnetForm = nil
 		m.ftpSitesForm = nil
 		m.ftpForm = nil
+		m.webdavSitesForm = nil
+		m.webdavForm = nil
 		m.localBrowserForm = nil
 
 		switch msg.target {
@@ -498,6 +512,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case ViewFTP:
 			m.ftpSitesForm = NewFTPSitesForm(m.styles, m.width, m.height)
 			m.viewMode = ViewFTP
+			return m, nil
+		case ViewWebDAV:
+			m.webdavSitesForm = NewWebDAVSitesForm(m.styles, m.width, m.height)
+			m.viewMode = ViewWebDAV
 			return m, nil
 		case ViewLocalBrowser:
 			cwd, err := os.Getwd()
@@ -612,6 +630,46 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.table.Focus()
 		return m, nil
 
+	case webdavOpenBrowserMsg:
+		m.webdavSitesForm = nil
+		layout := config.WebDAVLayoutDual
+		if m.appConfig != nil {
+			layout = config.NormalizeWebDAVLayout(m.appConfig.WebDAVLayout)
+		}
+		m.webdavForm = NewWebDAVFormWithLayout(m.styles, m.width, m.height, msg.siteName, layout)
+		m.viewMode = ViewWebDAVBrowse
+		m.webdavFromSites = true
+		return m, m.webdavForm.Init()
+
+	case webdavDoneMsg:
+		if m.webdavForm != nil && m.webdavForm.client != nil {
+			_ = m.webdavForm.client.Close()
+		}
+		m.webdavForm = nil
+		if m.viewMode == ViewWebDAVBrowse && m.webdavFromSites {
+			m.webdavFromSites = false
+			m.webdavSitesForm = NewWebDAVSitesForm(m.styles, m.width, m.height)
+			m.viewMode = ViewWebDAV
+			return m, nil
+		}
+		m.webdavSitesForm = nil
+		m.webdavFromSites = false
+		if m.webdavOnly {
+			return m, tea.Quit
+		}
+		m.viewMode = ViewList
+		m.table.Focus()
+		return m, nil
+
+	case webdavSitesDoneMsg:
+		m.webdavSitesForm = nil
+		if m.webdavOnly {
+			return m, tea.Quit
+		}
+		m.viewMode = ViewList
+		m.table.Focus()
+		return m, nil
+
 	case localDoneMsg:
 		m.localBrowserForm = nil
 		m.viewMode = ViewList
@@ -651,7 +709,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.peekOpen && m.peekHost != nil && m.peekHost.Name == msg.hostName {
 			m.peekLoading = false
 			if msg.err != nil {
-				m.peekErr = msg.err.Error()
+				m.peekErr = msg.errorText()
 				m.peekStats = nil
 			} else {
 				m.peekStats = msg.stats
@@ -795,6 +853,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, cmd
 			}
+		case ViewWebDAV:
+			if m.webdavSitesForm != nil {
+				updatedModel, cmd := m.webdavSitesForm.Update(msg)
+				if fm, ok := updatedModel.(*webdavSitesModel); ok {
+					m.webdavSitesForm = fm
+				}
+				return m, cmd
+			}
+		case ViewWebDAVBrowse:
+			if m.webdavForm != nil {
+				updatedModel, cmd := m.webdavForm.Update(msg)
+				if fm, ok := updatedModel.(*webdavFormModel); ok {
+					m.webdavForm = fm
+				}
+				return m, cmd
+			}
 		case ViewLocalBrowser:
 			if m.localBrowserForm != nil {
 				updatedModel, cmd := m.localBrowserForm.Update(msg)
@@ -877,6 +951,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, sftpCmd
 		}
+	case ViewTelnet:
+		if m.telnetForm != nil {
+			updatedModel, telnetCmd := m.telnetForm.Update(msg)
+			if tm, ok := updatedModel.(*telnetFormModel); ok {
+				m.telnetForm = tm
+			}
+			return m, telnetCmd
+		}
+	case ViewFTP:
+		if m.ftpSitesForm != nil {
+			updatedModel, ftpCmd := m.ftpSitesForm.Update(msg)
+			if fm, ok := updatedModel.(*ftpSitesModel); ok {
+				m.ftpSitesForm = fm
+			}
+			return m, ftpCmd
+		}
 	case ViewFTPBrowse:
 		if m.ftpForm != nil {
 			updatedModel, ftpCmd := m.ftpForm.Update(msg)
@@ -884,6 +974,38 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.ftpForm = fm
 			}
 			return m, ftpCmd
+		}
+	case ViewWebDAV:
+		if m.webdavSitesForm != nil {
+			updatedModel, webdavCmd := m.webdavSitesForm.Update(msg)
+			if wm, ok := updatedModel.(*webdavSitesModel); ok {
+				m.webdavSitesForm = wm
+			}
+			return m, webdavCmd
+		}
+	case ViewWebDAVBrowse:
+		if m.webdavForm != nil {
+			updatedModel, webdavCmd := m.webdavForm.Update(msg)
+			if wm, ok := updatedModel.(*webdavFormModel); ok {
+				m.webdavForm = wm
+			}
+			return m, webdavCmd
+		}
+	case ViewLocalBrowser:
+		if m.localBrowserForm != nil {
+			updatedModel, lbCmd := m.localBrowserForm.Update(msg)
+			if lm, ok := updatedModel.(*localBrowserModel); ok {
+				m.localBrowserForm = lm
+			}
+			return m, lbCmd
+		}
+	case ViewSnippet:
+		if m.snippetForm != nil {
+			updatedModel, snipCmd := m.snippetForm.Update(msg)
+			if sm, ok := updatedModel.(*snippetFormModel); ok {
+				m.snippetForm = sm
+			}
+			return m, snipCmd
 		}
 	}
 
@@ -1362,6 +1484,13 @@ func (m Model) handleListViewKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			// Open FTP site manager (uppercase; avoid colliding with f = port-forward)
 			m.ftpSitesForm = NewFTPSitesForm(m.styles, m.width, m.height)
 			m.viewMode = ViewFTP
+			return m, nil
+		}
+	case "W":
+		if !m.searchMode && !m.deleteMode {
+			// Open WebDAV site manager (uppercase; avoid colliding with w = tag drawer)
+			m.webdavSitesForm = NewWebDAVSitesForm(m.styles, m.width, m.height)
+			m.viewMode = ViewWebDAV
 			return m, nil
 		}
 	case "b":

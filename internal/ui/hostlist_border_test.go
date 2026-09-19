@@ -352,6 +352,34 @@ func assertPlacedModalBordersAligned(t *testing.T, name, modal string, width int
 	}
 }
 
+func TestJetBrainsUpdateSuccessModalBorderAlignment(t *testing.T) {
+	for _, lang := range []string{i18n.LangZHCN, i18n.LangEN} {
+		t.Run("Lang_"+lang, func(t *testing.T) {
+			i18n.SetLang(lang)
+			t.Setenv("TERMINAL_EMULATOR", "JetBrains-JediTerm")
+			t.Setenv("JETBRAINS_INTELLIJ_COMMAND_X", "")
+			t.Setenv("IDEA_INITIAL_DIRECTORY", "")
+			if !isJetBrainsTerminal() {
+				t.Fatal("expected JetBrains detection")
+			}
+
+			// The update-success modal line starts with ✅ (U+2705), which
+			// advances 1 column on JediTerm while ansi.StringWidth counts 2.
+			// The success line must carry the deficit so the right border
+			// aligns with the corners.
+			check := "\U00002705"
+			if tw, sw := terminalDisplayWidth(check), ansi.StringWidth(check); tw != sw-1 {
+				t.Fatalf("check mark: terminalDisplayWidth=%d ansi.StringWidth=%d want ansi-1", tw, sw)
+			}
+
+			form := NewUpdateForm(NewStyles(100), 100, 30, "1.0.0", "1.0.1", "")
+			form.phase = updateDone
+			modal := form.View()
+			assertPlacedModalBordersAligned(t, "updateSuccessModal", modal, form.width)
+		})
+	}
+}
+
 func TestStandardTerminalPeekModalBorderAlignment(t *testing.T) {
 	for _, lang := range []string{i18n.LangZHCN, i18n.LangEN} {
 		t.Run("Lang_"+lang, func(t *testing.T) {

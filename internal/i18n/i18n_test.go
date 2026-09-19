@@ -57,3 +57,36 @@ func TestDetectLanguage(t *testing.T) {
 		t.Errorf("Expected en for CTTY_LANG=en, got %s", DetectLanguage())
 	}
 }
+
+func TestCommonYesNo(t *testing.T) {
+	SetLang("en")
+	if T("common.yes") != "Yes" {
+		t.Errorf("Expected 'Yes', got %q", T("common.yes"))
+	}
+	if T("common.no") != "No" {
+		t.Errorf("Expected 'No', got %q", T("common.no"))
+	}
+	SetLang("zh_CN")
+	if T("common.yes") != "是" {
+		t.Errorf("Expected '是', got %q", T("common.yes"))
+	}
+	if T("common.no") != "否" {
+		t.Errorf("Expected '否', got %q", T("common.no"))
+	}
+}
+
+func TestLocalesSymmetry(t *testing.T) {
+	en := messages[LangEN]
+	zh := messages[LangZHCN]
+
+	for k := range en {
+		if _, ok := zh[k]; !ok {
+			t.Errorf("Key %q defined in EN but missing in ZH", k)
+		}
+	}
+	for k := range zh {
+		if _, ok := en[k]; !ok {
+			t.Errorf("Key %q defined in ZH but missing in EN", k)
+		}
+	}
+}

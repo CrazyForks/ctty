@@ -8,6 +8,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
+
+	"github.com/charmbracelet/x/ansi"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -195,6 +198,24 @@ func fetchHostStatsCmd(host config.SSHHost, configFile string) tea.Cmd {
 		stats := parseHostStats(string(out))
 		return hostStatsResultMsg{hostName: host.Name, stats: stats, raw: string(out)}
 	}
+}
+
+func (msg hostStatsResultMsg) errorText() string {
+	detail := strings.Join(strings.Fields(ansi.Strip(msg.raw)), " ")
+	detail = strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, detail)
+	runes := []rune(detail)
+	if len(runes) > 512 {
+		detail = "…" + string(runes[len(runes)-512:])
+	}
+	if detail == "" {
+		return msg.err.Error()
+	}
+	return msg.err.Error() + ": " + detail
 }
 
 // renderPeekModal renders the centered Quick Peek card box.

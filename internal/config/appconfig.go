@@ -43,6 +43,24 @@ func NormalizeSFTPLayout(layout SFTPLayout) SFTPLayout {
 	return SFTPLayoutDual
 }
 
+type WebDAVLayout string
+
+const (
+	WebDAVLayoutDual   WebDAVLayout = "dual"
+	WebDAVLayoutSingle WebDAVLayout = "single"
+)
+
+func (l WebDAVLayout) Valid() bool {
+	return l == WebDAVLayoutDual || l == WebDAVLayoutSingle
+}
+
+func NormalizeWebDAVLayout(layout WebDAVLayout) WebDAVLayout {
+	if layout.Valid() {
+		return layout
+	}
+	return WebDAVLayoutDual
+}
+
 // KeyBindings represents configurable key bindings for the application
 type KeyBindings struct {
 	// Quit keys - keys that will quit the application
@@ -61,6 +79,7 @@ type AppConfig struct {
 	Theme           string            `json:"theme,omitempty"`
 	FTPLayout       FTPLayout         `json:"ftp_layout,omitempty"`
 	SFTPLayout      SFTPLayout        `json:"sftp_layout,omitempty"`
+	WebDAVLayout    WebDAVLayout      `json:"webdav_layout,omitempty"`
 }
 
 // IsUpdateCheckEnabled returns true if the update check is enabled (default: true)
@@ -82,10 +101,11 @@ func GetDefaultKeyBindings() KeyBindings {
 // GetDefaultAppConfig returns the default application configuration
 func GetDefaultAppConfig() AppConfig {
 	return AppConfig{
-		KeyBindings: GetDefaultKeyBindings(),
-		Theme:       "default",
-		FTPLayout:   FTPLayoutDual,
-		SFTPLayout:  SFTPLayoutDual,
+		KeyBindings:  GetDefaultKeyBindings(),
+		Theme:        "default",
+		FTPLayout:    FTPLayoutDual,
+		SFTPLayout:   SFTPLayoutDual,
+		WebDAVLayout: WebDAVLayoutDual,
 	}
 }
 
