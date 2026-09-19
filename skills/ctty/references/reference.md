@@ -1,8 +1,8 @@
 # ctty CLI reference
 
-ctty is SSH + serial + telnet + SFTP + FTP. SSH `search` / `info` / remote-exec,
-`import`, and serial/telnet/ftp `list|search|info` are non-interactive CLIs.
-Serial/telnet/FTP inventories are JSON files under the ctty config dir.
+ctty is SSH + serial + telnet + SFTP + FTP + WebDAV. SSH `search` / `info` / remote-exec,
+`import`, and serial/telnet/ftp/webdav `list|search|info` are non-interactive CLIs.
+Serial/telnet/FTP/WebDAV inventories are JSON files under the ctty config dir.
 
 ## Persistent flags (all commands)
 
@@ -225,3 +225,20 @@ JSON array / object of `{name,host,port,user,tags}`. Site file:
 `~/.config/ctty/ftp.json` (0600). Passwords encrypted in SSH
 `credentials.json` vault under `ftp:` names.
 Agents must not open `ctty ftp` / `ctty ftp <name>` TUI.
+
+## `ctty webdav list|search|info`
+
+```bash
+ctty webdav list --format json
+ctty webdav search cloud --format json
+ctty webdav info nextcloud --format json
+```
+
+JSON array / object of `{name,url,user,tags}`. Site file:
+`~/.config/ctty/webdav.json` (0600). Passwords encrypted in SSH
+`credentials.json` vault under `webdav:` names.
+Headless transfers mirror FTP: `webdav ls/get/put/mkdir/rm/rmdir/rename`
+(dirs recursive, progress on stderr).
+Agents must not open `ctty webdav` / `ctty webdav <name>` TUI.
+Auth is Basic/Digest only — `NoAuthenticator ... 401` means the server
+demands NTLM/Negotiate; report it, do not retry.
