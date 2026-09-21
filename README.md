@@ -248,7 +248,7 @@ Press `t` from the main TUI to enter the serial device manager. Available serial
 - Baud rate can be typed directly or cycled via `←/→` through presets (9600/19200/38400/57600/115200/230400/460800/921600)
 - Press `Enter` to connect with the modified parameters
 
-**Connecting:** The TUI suspends and bridges your terminal directly to the serial port. Press `Ctrl+]` or `Ctrl+C` to disconnect and return to the TUI.
+**Connecting:** The TUI suspends and bridges your terminal directly to the serial port. Press `Ctrl+]` to disconnect and return to the TUI.
 
 You can also launch the serial manager directly:
 ```bash
