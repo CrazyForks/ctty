@@ -36,7 +36,7 @@ func (c *serialExecCommand) SetStdout(w io.Writer) { c.stdout = w }
 func (c *serialExecCommand) SetStderr(w io.Writer) { c.stderr = w }
 
 // Run opens the serial port and bridges terminal stdin/stdout to it
-// until the user presses Ctrl+C or Ctrl+].
+// until the user presses or Ctrl+].
 func (c *serialExecCommand) Run() error {
 	mode := &serial.Mode{
 		BaudRate: c.dev.BaudRate,
@@ -176,7 +176,7 @@ var setRawStdinFn = setRawStdin
 var restoreStdinFn = restoreStdin
 
 // containsDisconnect reports if chunk carries Ctrl-] (0x1d) 
-// advertised as disconnect keys for serial.Ctrl+C (0x03) is
+// advertised as disconnect keys for serial. Ctrl+C (0x03) is
 // intentionally not treated as a disconnect and is forwarded to the
 // serial device instead.
 func containsDisconnect(chunk []byte) bool {
