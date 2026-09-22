@@ -36,7 +36,7 @@ func (c *serialExecCommand) SetStdout(w io.Writer) { c.stdout = w }
 func (c *serialExecCommand) SetStderr(w io.Writer) { c.stderr = w }
 
 // Run opens the serial port and bridges terminal stdin/stdout to it
-// until the user presses Ctrl+C or Ctrl+].
+// until the user presses or Ctrl+].
 func (c *serialExecCommand) Run() error {
 	mode := &serial.Mode{
 		BaudRate: c.dev.BaudRate,
@@ -68,7 +68,7 @@ func (c *serialExecCommand) Run() error {
 		errOut = os.Stderr
 	}
 
-	fmt.Fprintf(errOut, "Connected to %s (%s @ %d baud). Press Ctrl+] or Ctrl+C to disconnect.\n",
+	fmt.Fprintf(errOut, "Connected to %s (%s @ %d baud). Press Ctrl+] to disconnect.\n",
 		c.dev.Name, c.dev.Device, c.dev.BaudRate)
 
 	oldState, err := setRawStdinFn()
@@ -78,7 +78,7 @@ func (c *serialExecCommand) Run() error {
 	defer restoreStdinFn(oldState)
 
 	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigCh, syscall.SIGTERM)
 	defer signal.Stop(sigCh)
 
 	errCh := make(chan error, 2)
@@ -175,11 +175,13 @@ var serialOpen = serial.Open
 var setRawStdinFn = setRawStdin
 var restoreStdinFn = restoreStdin
 
-// containsDisconnect reports whether chunk carries Ctrl-] (0x1d) or
-// Ctrl+C (0x03), both advertised as disconnect keys for serial.
+// containsDisconnect reports if chunk carries Ctrl-] (0x1d) 
+// advertised as disconnect keys for serial. Ctrl+C (0x03) is
+// intentionally not treated as a disconnect and is forwarded to the
+// serial device instead.
 func containsDisconnect(chunk []byte) bool {
 	for _, c := range chunk {
-		if c == 0x1d || c == 0x03 {
+		if c == 0x1d {
 			return true
 		}
 	}

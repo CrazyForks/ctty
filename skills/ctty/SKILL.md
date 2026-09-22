@@ -240,7 +240,7 @@ ctty --lang en --no-update-check serial info Switch-Console --format json
 ```
 
 Auto-detected ports only appear inside the TUI. Quote `ctty serial` for the
-human to connect. Disconnect: `Ctrl+]` or `Ctrl+C`.
+human to connect. Disconnect: `Ctrl+]` .
 
 
 ### 6b. FTP
