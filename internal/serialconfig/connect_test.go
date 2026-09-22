@@ -88,32 +88,6 @@ func TestRun_NormalDisconnect_ReturnsNil(t *testing.T) {
 	}
 }
 
-func TestRun_CtrlC_NormalDisconnect(t *testing.T) {
-	origOpen := serialOpen
-	origRaw := setRawStdinFn
-	origRestore := restoreStdinFn
-	defer func() {
-		serialOpen = origOpen
-		setRawStdinFn = origRaw
-		restoreStdinFn = origRestore
-	}()
-	setRawStdinFn = func() (*termState, error) { return nil, nil }
-	restoreStdinFn = func(_ *termState) {}
-
-	fp := &fakePort{readDone: make(chan struct{})}
-	serialOpen = func(_ string, _ *serial.Mode) (serial.Port, error) { return fp, nil }
-
-	dev := SerialDevice{Name: "test", Device: "/tmp/fake0", BaudRate: 115200, DataBits: 8, Parity: "none", StopBits: 1}
-	cmd := NewExecCommand(dev)
-	cmd.SetStdin(bytes.NewReader([]byte{0x03}))
-	var errOut bytes.Buffer
-	cmd.SetStderr(&errOut)
-
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Ctrl+C should be silent, got %v", err)
-	}
-}
-
 func TestRun_WriteError_Bubbles(t *testing.T) {
 	origOpen := serialOpen
 	origRaw := setRawStdinFn
@@ -181,8 +155,8 @@ func TestContainsDisconnect(t *testing.T) {
 	if !containsDisconnect([]byte{0x1d}) {
 		t.Fatal("0x1d should match")
 	}
-	if !containsDisconnect([]byte{0x03}) {
-		t.Fatal("0x03 should match")
+	if containsDisconnect([]byte{0x03}) {
+		t.Fatal("Ctrl+C (0x03) should forwarded to the device")
 	}
 	if containsDisconnect([]byte("hello")) {
 		t.Fatal("hello should not match")
