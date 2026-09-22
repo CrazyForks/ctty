@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- **🔌 Serial connections — `Ctrl+C` is now forwarded to the device** — `Ctrl+C` (0x03) is now sent to the device and disconnect is `Ctrl+]` only
+
 ## [1.1.0] - 2026-09-19
 
 ### Added
