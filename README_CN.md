@@ -667,6 +667,7 @@ ctty get web-server /var/log/app.log ./app.log
 ctty scp web-server:/etc/ctty.conf ./ctty.conf
 
 # 一次在多台主机上执行同一条命令
+ctty exec --tags prod --list-hosts
 ctty exec --tags prod -- uptime
 ctty exec --hosts web-01,db-01 -- df -h
 

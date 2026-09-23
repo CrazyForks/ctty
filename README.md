@@ -673,6 +673,7 @@ ctty get web-server /var/log/app.log ./app.log
 ctty scp web-server:/etc/ctty.conf ./ctty.conf
 
 # Run the same command on many hosts at once
+ctty exec --tags prod --list-hosts
 ctty exec --tags prod -- uptime
 ctty exec --hosts web-01,db-01 -- df -h
 
