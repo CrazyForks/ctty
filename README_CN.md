@@ -610,6 +610,16 @@ ctty search
 ctty search prod
 ctty search "#web"
 
+# 测试主机连通性与网络延迟
+ctty ping prod-server
+ctty ping web1 web2 --json
+ctty ping --tags prod --all
+
+# 探测并检查主机实时运行指标（运行时间、CPU 负载、内存 %、磁盘 %）
+ctty peek prod-server
+ctty peek web1 web2 --json
+ctty peek --tags prod --concurrency 4
+
 # 直接打开指定主机的 SFTP 文件浏览器
 ctty sftp prod-server
 
