@@ -18,8 +18,15 @@ func TestLookupTabby(t *testing.T) {
 		t.Errorf("got name=%q dest=%q", src.Name(), src.DestFileName())
 	}
 	names := Names()
-	if len(names) == 0 || names[0] != "tabby" {
-		t.Errorf("Names() = %v", names)
+	foundTabby := false
+	for _, n := range names {
+		if n == "tabby" {
+			foundTabby = true
+			break
+		}
+	}
+	if !foundTabby {
+		t.Errorf("Names() = %v, want tabby to be present", names)
 	}
 	if _, ok := Lookup("putty"); ok {
 		t.Fatal("putty is not registered")

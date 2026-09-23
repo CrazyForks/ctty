@@ -59,7 +59,8 @@ ctty is a fast, native terminal tool for managing all your connections — SSH h
 - **🔒 Secure** - Works directly with your existing `~/.ssh/config` file (credentials stored separately, never pollutes standard SSH configs)
 - **📁 Custom Config Support** - Use any SSH configuration file with the `-c` flag
 - **🤖 Agent Skill & Headless CLI** - Agent skill for Cursor, Claude Code, and Codex; every operation available from the CLI without the TUI, with JSON output for scripts and agents
-- **📦 Host Import** - Migrate SSH profiles from Tabby with `ctty import --from tabby`
+- **📦 Multi-App Host Import** - Migrate SSH profiles from Tabby, Termius, FinalShell, or generic JSON with `ctty import --from <source>`
+- **💾 Backup & Cross-Device Migration** - Back up and restore all configurations, sites, and credentials with AES-256-GCM encryption (`ctty backup` / `ctty restore`), or export connections with `ctty export`
 - **📂 SSH Include Support** - Full support for SSH Include directives to organize configurations across multiple files
 - **⚙️ SSH Options Support** - Add any SSH configuration option through intuitive forms
 - **🔄 Automatic Conversion** - Seamlessly converts between command-line and config formats
@@ -678,6 +679,24 @@ ctty exec --hosts web-01,db-01 -- df -h
 # Query saved devices as JSON (for scripts / agents)
 ctty serial list --format json
 ctty telnet search core --format json
+
+# Back up configurations and credentials (optionally encrypted with AES-256-GCM)
+ctty backup -o my-backup.tar.gz
+ctty backup -p "passphrase" -o backup.ctty
+
+# Restore configuration files from a backup archive
+ctty restore backup.tar.gz --dry-run
+ctty restore backup.ctty -p "passphrase" --overwrite
+
+# Export connection profiles to JSON or OpenSSH format
+ctty export --format json
+ctty export --format ssh --tags prod
+
+# Import hosts from Tabby, Termius, FinalShell, or generic JSON
+ctty import tabby --dry-run
+ctty import termius -f ./termius-export.json
+ctty import finalshell -f ~/.finalshell/conn
+ctty import json -f ./hosts.json
 
 # Override interface language (auto, zh, en)
 ctty --lang zh

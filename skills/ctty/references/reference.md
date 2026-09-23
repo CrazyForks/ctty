@@ -309,3 +309,63 @@ Headless transfers mirror FTP: `webdav ls/get/put/mkdir/rm/rmdir/rename`
 Agents must not open `ctty webdav` / `ctty webdav <name>` TUI.
 Auth is Basic/Digest only — `NoAuthenticator ... 401` means the server
 demands NTLM/Negotiate; report it, do not retry.
+
+## `ctty backup` and `ctty restore`
+
+Backup and restore all ctty configurations, devices, sites, and credentials.
+
+```bash
+# Create unencrypted backup archive (.tar.gz)
+ctty backup -o backup.tar.gz --format json
+
+# Create encrypted backup (.ctty) with AES-256-GCM
+ctty backup -p "passphrase" -o backup.ctty --format json
+
+# Restore archive (--dry-run preview, --overwrite to replace existing files)
+ctty restore backup.tar.gz --dry-run --format json
+ctty restore backup.ctty -p "passphrase" --overwrite --format json
+```
+
+## `ctty export`
+
+Export connection profiles to JSON or OpenSSH config format.
+
+```bash
+ctty export [--format json|ssh] [--tags tag1,tag2]
+```
+
+JSON export bundle contains `{schema, exported_at, hosts, ftp_sites, webdav_sites, serial_devices, telnet_hosts}`.
+`--format ssh` outputs standard OpenSSH configuration blocks to stdout.
+
+## Generic JSON import (`ctty import json`)
+
+Import SSH profiles from any generic JSON array or wrapped object:
+
+```bash
+ctty import json -f /path/to/hosts.json --dry-run
+```
+
+Accepted structure (array or wrapped under `hosts` / `servers` / `nodes`):
+
+```json
+[
+  {
+    "name": "web-01",
+    "hostname": "10.0.0.1",
+    "user": "ubuntu",
+    "port": 22,
+    "identity_file": "~/.ssh/id_rsa",
+    "proxy_jump": "bastion",
+    "tags": ["prod", "web"]
+  }
+]
+```
+
+Field alias support:
+- Name: `name`, `label`, `alias`, `title`, `id`
+- Hostname: `hostname`, `host`, `ip`, `address`, `server`
+- User: `user`, `username`, `user_name`, `login`
+- Port: `port` (number or string, default 22)
+- Identity: `identity`, `identity_file`, `key_path`, `private_key`
+- ProxyJump: `proxy_jump`, `jump_host`, `bastion`
+- Tags: `tags`, `tag`, `group`, `groups` (array or comma-separated string)

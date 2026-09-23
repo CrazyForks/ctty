@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -52,9 +55,36 @@ Examples:
 				log.Fatalf("%s: %v", i18n.T("import.err_read"), err)
 			}
 		}
-		data, err := os.ReadFile(file)
+		fileInfo, err := os.Stat(file)
 		if err != nil {
 			log.Fatalf("%s: %v", i18n.T("import.err_no_file", src.Name(), file), err)
+		}
+		var data []byte
+		if fileInfo.IsDir() {
+			entries, readErr := os.ReadDir(file)
+			if readErr != nil {
+				log.Fatalf("%s: %v", i18n.T("import.err_read"), readErr)
+			}
+			var jsonItems []json.RawMessage
+			for _, entry := range entries {
+				if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".json") {
+					continue
+				}
+				content, readItemErr := os.ReadFile(filepath.Join(file, entry.Name()))
+				if readItemErr == nil && len(bytes.TrimSpace(content)) > 0 {
+					jsonItems = append(jsonItems, json.RawMessage(content))
+				}
+			}
+			if len(jsonItems) == 0 {
+				data = []byte("[]")
+			} else {
+				data, _ = json.Marshal(jsonItems)
+			}
+		} else {
+			data, err = os.ReadFile(file)
+			if err != nil {
+				log.Fatalf("%s: %v", i18n.T("import.err_no_file", src.Name(), file), err)
+			}
 		}
 
 		mainCfg := configFile

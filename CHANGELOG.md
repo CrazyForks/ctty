@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **💾 Backup & restore CLI** — `ctty backup [-o file] [-p passphrase] [--include-ssh] [--format json]`, `ctty restore <file> [-p passphrase] [--overwrite] [--dry-run] [--restore-ssh]`: archives snippets, FTP/WebDAV sites, serial/telnet devices, preferences and vault credentials; optional AES-256-GCM passphrase encryption for cross-device migration; `--dry-run` previews, `--overwrite` controls conflicts.
+- **📤 Export CLI** — `ctty export [--format json|ssh] [--tags t1,t2]`: dumps SSH/FTP/WebDAV/Serial/Telnet profiles as structured JSON or OpenSSH config (e.g. `ctty export --format ssh --tags prod > ~/.ssh/config.d/prod.conf`).
+- **📦 Multi-source host import** — `ctty import` now supports `termius` (JSON export), `finalshell` (`conn` dir, incl. directory scan of `*.json`), and generic `json` (`hosts.json`), alongside existing `tabby`; shell completion updated accordingly.
+- **🔑 Credential vault portable migration** — new `ExportAll`/`ImportAll` (decrypt with local machine key → re-encrypt on target, optional overwrite) backing backup/restore flows.
 - **📡 Headless `ping` CLI** — `ctty ping [hosts...] [--tags t1,t2] [--all] [--timeout 3s] [--concurrency N] [--json | --format json]`: checks SSH connectivity/latency for one, many, tagged, or all visible hosts; aligned status table by default, JSON array with `--json`; exit `0` all online, `1` otherwise.
 - **👀 Headless `peek` CLI** — `ctty peek [hosts...] [--tags t1,t2] [--all] [--timeout 7s] [--concurrency N] [--json | --format json]`: inspects real-time host metrics (uptime, load, memory %, root disk %) without opening the TUI; human-readable card view by default, JSON array with `--json`; exit `0` all succeeded, `1` otherwise.
 

@@ -285,3 +285,54 @@ func RenameHost(oldName, newName string) error {
 	}
 	return nil
 }
+
+// ExportAll returns a map of all decrypted credentials (hostName -> password).
+func ExportAll() (map[string]string, error) {
+	store, err := getStore()
+	if err != nil {
+		return nil, err
+	}
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+
+	result := make(map[string]string, len(store.credentials))
+	for name, cred := range store.credentials {
+		if cred.Password == "" {
+			continue
+		}
+		plain, err := decrypt(cred.Password, store.masterKey)
+		if err == nil && plain != "" {
+			result[name] = plain
+		}
+	}
+	return result, nil
+}
+
+// ImportAll imports a map of hostName -> plaintext passwords, encrypting them with the local masterKey.
+func ImportAll(creds map[string]string, overwrite bool) error {
+	store, err := getStore()
+	if err != nil {
+		return err
+	}
+	store.mu.Lock()
+	defer store.mu.Unlock()
+
+	for name, pass := range creds {
+		if name == "" || pass == "" {
+			continue
+		}
+		if _, exists := store.credentials[name]; exists && !overwrite {
+			continue
+		}
+		encrypted, err := encrypt(pass, store.masterKey)
+		if err != nil {
+			return err
+		}
+		store.credentials[name] = Credential{
+			HostName:  name,
+			Password:  encrypted,
+			UpdatedAt: time.Now(),
+		}
+	}
+	return store.save()
+}
