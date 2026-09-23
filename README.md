@@ -19,8 +19,7 @@ ctty is a fast, native terminal tool for managing all your connections — SSH h
 
 **Why ctty?**
 - **Tabby too heavy?** ctty is a single ~5MB binary, no Electron, no browser engine — just pure Go
-- **Need serial + SSH + SFTP + FTP + WebDAV in one tool?** Most terminal emulators only do SSH; ctty covers them all
-- **Native telnet client built in** — no system `telnet` binary required (macOS dropped it, Windows and Termux need extras); IAC-aware with conservative negotiation
+- **Need serial + telnet + SFTP + FTP + WebDAV + SSH in one tool?** Most terminal emulators only do SSH; ctty covers them all in a single binary — serial/telnet/FTP/WebDAV/SFTP are built in, SSH reuses your system OpenSSH
 - **Want to stay in the terminal?** No context switching between apps — everything is keyboard-driven
 
 <p align="center">
@@ -1357,8 +1356,18 @@ This project is a fork of [sshm](https://github.com/Gu1llaum-3/sshm) by [@Gu1lla
 - [@yimeng](https://github.com/yimeng) for contributing SSH Include directive support
 - [@ldreux](https://github.com/ldreux) for contributing multi-word search functionality
 - [@qingfengzxr](https://github.com/qingfengzxr) for contributing custom key bindings support
-- [Linux.do](https://linux.do) for opensource support
+- [Linux.do](https://linux.do) · [V2ex](https://v2ex.com)for opensource support
 - The Go community for building such fantastic tools
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=zsuroy%2Fctty&type=date&legend=bottom-right">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=zsuroy/ctty&type=date&theme=dark&legend=bottom-right" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=zsuroy/ctty&type=date&legend=bottom-right" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=zsuroy/ctty&type=date&legend=bottom-right" />
+ </picture>
+</a>
 
 ---
 

@@ -17,7 +17,7 @@ ctty 是一个快速、原生的终端工具，用于管理你的所有连接 �
 
 **为什么选择 ctty？**
 - **嫌 Tabby 太重？** ctty 是单个约 5MB 的二进制文件，没有 Electron，没有浏览器引擎 —— 纯 Go
-- **需要一个工具同时搞定串口 + SSH + SFTP + FTP + WebDAV？** 大多数终端模拟器只做 SSH；ctty 全覆盖
+- **需要一个工具同时搞定串口 + Telnet + SFTP + FTP + WebDAV + SSH？** 大多数终端只做 SSH；ctty 一个二进制全搞定 —— 串口/Telnet/FTP/WebDAV/SFTP 原生内置，SSH 复用系统 OpenSSH
 - **想留在终端里？** 不用在多个应用间切换 —— 一切都由键盘驱动
 
 <p align="center">
@@ -1356,8 +1356,18 @@ ctty/
 - [@yimeng](https://github.com/yimeng) 贡献 SSH Include 指令支持
 - [@ldreux](https://github.com/ldreux) 贡献多词搜索功能
 - [@qingfengzxr](https://github.com/qingfengzxr) 贡献自定义快捷键支持
-- [Linux.do](https://linux.do) 开源社区支持
+- [Linux.do](https://linux.do) · [V2ex](https://v2ex.com) 开源社区支持
 - Go 社区构建了这些出色的工具
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=zsuroy%2Fctty&type=date&legend=bottom-right">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=zsuroy/ctty&type=date&theme=dark&legend=bottom-right" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=zsuroy/ctty&type=date&legend=bottom-right" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=zsuroy/ctty&type=date&legend=bottom-right" />
+ </picture>
+</a>
 
 ---
 
