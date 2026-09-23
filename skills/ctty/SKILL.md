@@ -18,7 +18,7 @@ the ctty config dir. Agents must drive it **non-interactively**.
 
 | Kind | Agent can | Hand to the human |
 |------|-----------|-------------------|
-| SSH | `search`, `info`, `add`/`edit` (flags), `exec`, `ctty <alias> -- <cmd>` | `ctty <alias>` shell, port-forward TUI (`f`) |
+| SSH | `search`, `info`, `ping`, `peek`, `add`/`edit` (flags), `exec`, `ctty <alias> -- <cmd>` | `ctty <alias>` shell, port-forward TUI (`f`) |
 | SFTP | `ctty put` / `ctty get` / `ctty scp` + `ctty sftp ls/mkdir/rm/rmdir/rename --format json` | `ctty sftp <alias>` TUI |
 | Telnet | `ctty telnet list\|search\|info --format json` | Interactive session (`Ctrl+]`) |
 | Serial | `ctty serial list/search/info --format json` | Device manager TUI |
@@ -149,6 +149,36 @@ ctty info prod-web | jq -r '.result.tags[]'
 ```
 
 JSON field map: [reference.md](references/reference.md).
+ 
+### 2b. SSH — ping (reachability & latency)
+
+Fast parallel connectivity and SSH port check:
+
+```bash
+ctty --lang en --no-update-check ping prod-web --json
+ctty --lang en --no-update-check ping web1 web2 --json
+ctty --lang en --no-update-check ping --tags prod --json
+ctty --lang en --no-update-check ping --all --timeout 3s --json
+```
+
+- `--json` or `--format json` outputs a machine-readable array of `{host,ok,status,latency_ms,error}`
+- Default text output shows an aligned status table
+- Exit code is 0 iff all targeted hosts are online
+
+### 2c. SSH — peek (real-time health metrics)
+
+Inspect remote system health without opening an interactive session:
+
+```bash
+ctty --lang en --no-update-check peek prod-web --json
+ctty --lang en --no-update-check peek web1 web2 --json
+ctty --lang en --no-update-check peek --tags prod --concurrency 4 --json
+ctty --lang en --no-update-check peek --all --timeout 5s --json
+```
+
+- Non-interactive remote probe collecting uptime, CPU load averages (1/5/15), memory usage/percent, and root disk usage/percent
+- `--json` or `--format json` outputs an array of `{host,ok,stats,error}`
+- Exit code is 0 iff all targeted hosts were probed successfully
 
 ### 3. SSH — run a remote command
 

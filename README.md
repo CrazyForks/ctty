@@ -617,6 +617,16 @@ ctty search
 ctty search prod
 ctty search "#web"
 
+# Check network connectivity and SSH port reachability
+ctty ping prod-server
+ctty ping web1 web2 --json
+ctty ping --tags prod --all
+
+# Inspect real-time host metrics (uptime, CPU load, memory %, disk %)
+ctty peek prod-server
+ctty peek web1 web2 --json
+ctty peek --tags prod --concurrency 4
+
 # Open SFTP file browser directly for a host
 ctty sftp prod-server
 
