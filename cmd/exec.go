@@ -21,6 +21,8 @@ var (
 	execHosts       string
 	execConcurrency int
 	execFormat      string
+	execListHosts   bool
+	execDryRun      bool
 )
 
 type execResult struct {
@@ -33,7 +35,7 @@ type execResult struct {
 }
 
 var execCmd = &cobra.Command{
-	Use:   "exec [--tags tag1,tag2 | --hosts a,b] -- <command...>",
+	Use:   "exec [--tags tag1,tag2 | --hosts a,b] [--list-hosts] -- <command...>",
 	Short: "Run a remote command on multiple SSH hosts",
 	Long: `Execute a remote command on multiple hosts selected by tags and/or host names.
 
@@ -41,12 +43,19 @@ Selection (at least one required):
   --tags prod,web   hosts that have ANY of the listed tags
   --hosts a,b,c     explicit Host aliases
 
+Preview without SSH:
+  --list-hosts      print the exact Host aliases that would run (one per line;
+                    --format json prints a JSON string array). Exit 0 even when
+                    the selection is empty. A remote command is optional and ignored.
+  --dry-run         alias for --list-hosts
+
 Default concurrency is 8 (--concurrency). Human-readable output by default;
 --format json emits an array of {host,ok,exit_code,stdout,stderr}.
 
 Aggregate exit status is 0 if and only if every host succeeded.
 
 Examples:
+  ctty exec --tags prod --list-hosts
   ctty exec --tags prod -- uptime
   ctty exec --hosts web1,web2 -- df -h
   ctty exec --tags api --hosts bastion --format json -- systemctl is-active nginx`,
@@ -55,11 +64,13 @@ Examples:
 }
 
 func runBatchExec(cmd *cobra.Command, args []string) {
+	listOnly := execListHosts || execDryRun
+
 	remoteCmd := args
 	if cmd.ArgsLenAtDash() >= 0 {
 		remoteCmd = args[cmd.ArgsLenAtDash():]
 	}
-	if len(remoteCmd) == 0 {
+	if !listOnly && len(remoteCmd) == 0 {
 		fmt.Fprintf(os.Stderr, "Error: remote command required (use -- before the command)\n")
 		os.Exit(1)
 	}
@@ -78,6 +89,13 @@ func runBatchExec(cmd *cobra.Command, args []string) {
 	}
 
 	selected := selectHosts(hosts, tagList, hostList)
+	if listOnly {
+		if err := printExecHostList(selected, execFormat); err != nil {
+			fmt.Fprintf(os.Stderr, "Error marshaling JSON: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(selected) == 0 {
 		fmt.Fprintf(os.Stderr, "Error: no hosts matched the selection\n")
 		os.Exit(1)
@@ -154,6 +172,29 @@ func loadSSHHosts() ([]config.SSHHost, error) {
 		return config.ParseSSHConfigFile(configFile)
 	}
 	return config.ParseSSHConfig()
+}
+
+
+// printExecHostList writes the selected Host aliases for --list-hosts.
+// Human mode: one alias per line, no banners. JSON mode: a JSON string array.
+// Empty selection prints nothing (or []) and is not an error.
+func printExecHostList(hosts []config.SSHHost, format string) error {
+	names := make([]string, 0, len(hosts))
+	for _, h := range hosts {
+		names = append(names, h.Name)
+	}
+	if format == "json" {
+		b, err := json.MarshalIndent(names, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(b))
+		return nil
+	}
+	for _, name := range names {
+		fmt.Println(name)
+	}
+	return nil
 }
 
 func selectHosts(hosts []config.SSHHost, tags, names []string) []config.SSHHost {
@@ -262,4 +303,6 @@ func init() {
 	execCmd.Flags().StringVar(&execHosts, "hosts", "", "Comma-separated Host aliases")
 	execCmd.Flags().IntVar(&execConcurrency, "concurrency", 8, "Max parallel SSH sessions")
 	execCmd.Flags().StringVar(&execFormat, "format", "", "Output format: json for machine-readable array")
+	execCmd.Flags().BoolVar(&execListHosts, "list-hosts", false, "Print selected Host aliases without running SSH (empty selection exits 0)")
+	execCmd.Flags().BoolVar(&execDryRun, "dry-run", false, "Alias for --list-hosts")
 }

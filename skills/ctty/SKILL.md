@@ -216,6 +216,7 @@ config, never printed). `-c` selects a custom SSH config file.
 ### 3c. SSH — batch exec
 
 ```bash
+ctty --lang en --no-update-check exec --tags prod --list-hosts
 ctty --lang en --no-update-check exec --tags prod -- uptime
 ctty --lang en --no-update-check exec --hosts web1,web2 --concurrency 4 --format json -- df -h
 ```

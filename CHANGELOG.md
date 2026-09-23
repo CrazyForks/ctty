@@ -5,9 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.2.0] - 2026-09-23
 
 ### Added
+
+- **🎯 `exec --list-hosts`** — preview the exact Host set for `--tags` / `--hosts` without SSH (`--dry-run` alias). One alias per line, or a JSON string array with `--format json`; empty selection exits `0` (no remote command required). Same `HostHasAnyTag` filter as a real `exec` / `export --tags`.
 
 - **💾 Backup & restore CLI** — `ctty backup [-o file] [-p passphrase] [--include-ssh] [--format json]`, `ctty restore <file> [-p passphrase] [--overwrite] [--dry-run] [--restore-ssh]`: archives snippets, FTP/WebDAV sites, serial/telnet devices, preferences and vault credentials; optional AES-256-GCM passphrase encryption for cross-device migration; `--dry-run` previews, `--overwrite` controls conflicts.
 - **📤 Export CLI** — `ctty export [--format json|ssh] [--tags t1,t2]`: dumps SSH/FTP/WebDAV/Serial/Telnet profiles as structured JSON or OpenSSH config (e.g. `ctty export --format ssh --tags prod > ~/.ssh/config.d/prod.conf`).
