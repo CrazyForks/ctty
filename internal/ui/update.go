@@ -431,6 +431,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				sshArgs = append(sshArgs, msg.sshArgs...)
 				sshCmd := exec.Command("ssh", sshArgs...)
 
+				// Inject SSH_ASKPASS env so saved passwords work like direct connect.
+				hostName := ""
+				if m.portForwardForm != nil {
+					hostName = m.portForwardForm.hostName
+				}
+				if hostName == "" && len(msg.sshArgs) > 0 {
+					hostName = msg.sshArgs[len(msg.sshArgs)-1]
+				}
+				if hostName != "" {
+					sshCmd.Env = buildSSHEnv(hostName)
+				}
+
 				// Record the connection in history
 				if m.historyManager != nil && m.portForwardForm != nil {
 					err := m.historyManager.RecordConnection(m.portForwardForm.hostName)

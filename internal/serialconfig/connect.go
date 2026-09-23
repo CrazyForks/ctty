@@ -175,7 +175,7 @@ var serialOpen = serial.Open
 var setRawStdinFn = setRawStdin
 var restoreStdinFn = restoreStdin
 
-// containsDisconnect reports if chunk carries Ctrl-] (0x1d) 
+// containsDisconnect reports if chunk carries Ctrl-] (0x1d)
 // advertised as disconnect keys for serial. Ctrl+C (0x03) is
 // intentionally not treated as a disconnect and is forwarded to the
 // serial device instead.
