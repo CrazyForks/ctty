@@ -98,6 +98,73 @@ Not found (`ok: false`, exit 2):
 `info` **does** resolve hidden hosts. Use it when search omitted an alias
 the user named explicitly.
 
+## `ctty ping`
+
+Check network connectivity and SSH port reachability.
+
+```bash
+ctty ping [hosts...] [--all] [--tags tag1,tag2] [--format table|json] [--json] [--timeout 5s] [--concurrency 16]
+```
+
+JSON is an array of objects:
+
+```json
+[
+  {
+    "host": "prod-web",
+    "ok": true,
+    "status": "online",
+    "latency_ms": 24.5,
+    "error": ""
+  },
+  {
+    "host": "dev-offline",
+    "ok": false,
+    "status": "offline",
+    "latency_ms": 0,
+    "error": "connection refused"
+  }
+]
+```
+
+Exit code: 0 if all pinged hosts are online; 1 if any host is offline or not found.
+
+## `ctty peek`
+
+Inspect real-time system metrics (uptime, CPU load averages, memory %, root disk %) without opening an interactive shell.
+
+```bash
+ctty peek [hosts...] [--all] [--tags tag1,tag2] [--format table|json] [--json] [--timeout 7s] [--concurrency 8]
+```
+
+JSON is an array of objects:
+
+```json
+[
+  {
+    "host": "prod-web",
+    "ok": true,
+    "stats": {
+      "uptime": "15 days, 4:20",
+      "users": "2",
+      "load1": "0.15",
+      "load5": "0.20",
+      "load15": "0.18",
+      "mem_total_mb": 8192,
+      "mem_used_mb": 4096,
+      "mem_percent": 50.0,
+      "disk_total": "100G",
+      "disk_used": "25G",
+      "disk_avail": "75G",
+      "disk_percent": 25.0
+    },
+    "error": ""
+  }
+]
+```
+
+Exit code: 0 if all hosts probed successfully; 1 if any host failed or was not found.
+
 ## Remote exec
 
 ```

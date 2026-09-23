@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **📡 Headless `ping` CLI** — `ctty ping [hosts...] [--tags t1,t2] [--all] [--timeout 3s] [--concurrency N] [--json | --format json]`: checks SSH connectivity/latency for one, many, tagged, or all visible hosts; aligned status table by default, JSON array with `--json`; exit `0` all online, `1` otherwise.
+- **👀 Headless `peek` CLI** — `ctty peek [hosts...] [--tags t1,t2] [--all] [--timeout 7s] [--concurrency N] [--json | --format json]`: inspects real-time host metrics (uptime, load, memory %, root disk %) without opening the TUI; human-readable card view by default, JSON array with `--json`; exit `0` all succeeded, `1` otherwise.
+
 ## [1.1.2] - 2026-09-23
 
 ### Fixed

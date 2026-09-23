@@ -3,37 +3,18 @@ package ui
 import (
 	"context"
 	"fmt"
-	"os/exec"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
-	"unicode"
-
-	"github.com/charmbracelet/x/ansi"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/zsuroy/ctty/internal/config"
 	"github.com/zsuroy/ctty/internal/i18n"
+	"github.com/zsuroy/ctty/internal/peek"
 )
 
 // HostStats holds parsed health & resource metrics for an SSH host.
-type HostStats struct {
-	Uptime      string
-	Users       string
-	Load1       string
-	Load5       string
-	Load15      string
-	MemTotalMB  int
-	MemUsedMB   int
-	MemPercent  float64
-	DiskTotal   string
-	DiskUsed    string
-	DiskAvail   string
-	DiskPercent float64
-	RawOutput   string
-}
+type HostStats = peek.HostStats
 
 // hostStatsResultMsg is returned when host stats probing finishes.
 type hostStatsResultMsg struct {
@@ -43,179 +24,27 @@ type hostStatsResultMsg struct {
 	raw      string
 }
 
-var (
-	reLoadAverage = regexp.MustCompile(`load average[s]?:\s*([0-9.]+)[,\s]+([0-9.]+)[,\s]+([0-9.]+)`)
-	reUptime      = regexp.MustCompile(`up\s+(\d+\s+days?,\s*[^,]+|[^,]+)`)
-	reUsers       = regexp.MustCompile(`(\d+)\s+users?`)
-)
-
-// parseHostStats parses output of:
-// uptime 2>/dev/null; echo "---"; free -m 2>/dev/null || vm_stat 2>/dev/null; echo "---"; df -h / 2>/dev/null
-func parseHostStats(output string) *HostStats {
-	stats := &HostStats{RawOutput: strings.TrimSpace(output)}
-	sections := strings.Split(output, "---")
-
-	// Section 1: Uptime & Load
-	if len(sections) > 0 {
-		upLine := sections[0]
-		if m := reLoadAverage.FindStringSubmatch(upLine); len(m) >= 4 {
-			stats.Load1 = m[1]
-			stats.Load5 = m[2]
-			stats.Load15 = m[3]
-		}
-		if m := reUptime.FindStringSubmatch(upLine); len(m) >= 2 {
-			stats.Uptime = strings.TrimSpace(m[1])
-		}
-		if m := reUsers.FindStringSubmatch(upLine); len(m) >= 2 {
-			stats.Users = m[1]
-		}
-	}
-
-	// Section 2: Memory (free -m)
-	if len(sections) > 1 {
-		memLines := strings.Split(sections[1], "\n")
-		for _, line := range memLines {
-			fields := strings.Fields(line)
-			if len(fields) >= 3 && strings.HasPrefix(fields[0], "Mem:") {
-				if total, err := strconv.Atoi(fields[1]); err == nil && total > 0 {
-					stats.MemTotalMB = total
-					if used, err := strconv.Atoi(fields[2]); err == nil {
-						stats.MemUsedMB = used
-						stats.MemPercent = float64(used) / float64(total) * 100.0
-					}
-				}
-				break
-			}
-		}
-	}
-
-	// Section 3: Disk (df -h /)
-	if len(sections) > 2 {
-		diskLines := strings.Split(sections[2], "\n")
-		for _, line := range diskLines {
-			fields := strings.Fields(line)
-			if len(fields) >= 5 && (fields[len(fields)-1] == "/" || strings.HasSuffix(fields[0], "/")) {
-				stats.DiskTotal = fields[1]
-				stats.DiskUsed = fields[2]
-				stats.DiskAvail = fields[3]
-				pctStr := strings.TrimSuffix(fields[4], "%")
-				if pct, err := strconv.ParseFloat(pctStr, 64); err == nil {
-					stats.DiskPercent = pct
-				}
-				break
-			}
-		}
-	}
-
-	return stats
-}
+// parseHostStats parses probe command output.
+var parseHostStats = peek.ParseHostStats
 
 // renderProgressBar formats a visual progress bar e.g. [████████░░░░░░░░] 48.0%
 func renderProgressBar(percent float64, barWidth int) string {
-	if percent < 0 {
-		percent = 0
-	}
-	if percent > 100 {
-		percent = 100
-	}
-	if barWidth <= 0 {
-		barWidth = 16
-	}
-
-	filledLen := int(percent / 100.0 * float64(barWidth))
-	if filledLen > barWidth {
-		filledLen = barWidth
-	}
-	emptyLen := barWidth - filledLen
-
-	// Color gradient based on usage
-	var color lipgloss.Color
-	switch {
-	case percent >= 85:
-		color = lipgloss.Color("9") // Red
-	case percent >= 70:
-		color = lipgloss.Color("11") // Yellow
-	default:
-		color = lipgloss.Color("10") // Green
-	}
-
-	filledStyle := lipgloss.NewStyle().Foreground(color)
-	emptyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-
-	bar := filledStyle.Render(strings.Repeat("█", filledLen)) +
-		emptyStyle.Render(strings.Repeat("░", emptyLen))
-
-	return fmt.Sprintf("[%s] %5.1f%%", bar, percent)
+	return peek.RenderProgressBar(percent, barWidth)
 }
 
 // fetchHostStatsCmd executes a fast remote probe to collect health metrics.
 func fetchHostStatsCmd(host config.SSHHost, configFile string) tea.Cmd {
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
-		defer cancel()
-
-		var args []string
-		if configFile != "" {
-			args = append(args, "-F", configFile)
-		}
-		if host.Port != "" && host.Port != "22" {
-			args = append(args, "-p", host.Port)
-		}
-		if host.Identity != "" {
-			args = append(args, "-i", host.Identity)
-		}
-		if host.ProxyJump != "" {
-			args = append(args, "-J", host.ProxyJump)
-		}
-		args = append(args,
-			"-o", "ConnectTimeout=5",
-			"-o", "StrictHostKeyChecking=accept-new",
-			"-o", "BatchMode=yes",
-		)
-
-		target := host.Name
-		if host.Hostname != "" && host.Hostname != host.Name {
-			if host.User != "" {
-				target = fmt.Sprintf("%s@%s", host.User, host.Hostname)
-			} else {
-				target = host.Hostname
-			}
-		} else if host.User != "" {
-			target = fmt.Sprintf("%s@%s", host.User, host.Name)
-		}
-		args = append(args, target)
-
-		probeScript := `uptime 2>/dev/null; echo "---"; free -m 2>/dev/null || vm_stat 2>/dev/null; echo "---"; df -h / 2>/dev/null`
-		args = append(args, probeScript)
-
-		cmd := exec.CommandContext(ctx, "ssh", args...)
-		cmd.Env = buildSSHEnv(host.Name)
-
-		out, err := cmd.CombinedOutput()
+		stats, raw, err := peek.FetchHostStats(context.Background(), host, configFile, 7*time.Second)
 		if err != nil {
-			return hostStatsResultMsg{hostName: host.Name, err: err, raw: string(out)}
+			return hostStatsResultMsg{hostName: host.Name, err: err, raw: raw}
 		}
-		stats := parseHostStats(string(out))
-		return hostStatsResultMsg{hostName: host.Name, stats: stats, raw: string(out)}
+		return hostStatsResultMsg{hostName: host.Name, stats: stats, raw: raw}
 	}
 }
 
 func (msg hostStatsResultMsg) errorText() string {
-	detail := strings.Join(strings.Fields(ansi.Strip(msg.raw)), " ")
-	detail = strings.Map(func(r rune) rune {
-		if unicode.IsControl(r) {
-			return -1
-		}
-		return r
-	}, detail)
-	runes := []rune(detail)
-	if len(runes) > 512 {
-		detail = "…" + string(runes[len(runes)-512:])
-	}
-	if detail == "" {
-		return msg.err.Error()
-	}
-	return msg.err.Error() + ": " + detail
+	return peek.FormatError(msg.err, msg.raw)
 }
 
 // renderPeekModal renders the centered Quick Peek card box.
