@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **💾 Backup & restore CLI** — `ctty backup [-o file] [-p passphrase] [--include-ssh] [--format json]`, `ctty restore <file> [-p passphrase] [--overwrite] [--dry-run] [--restore-ssh]`: archives snippets, FTP/WebDAV sites, serial/telnet devices, preferences and vault credentials; optional AES-256-GCM passphrase encryption for cross-device migration; `--dry-run` previews, `--overwrite` controls conflicts.
+- **📤 Export CLI** — `ctty export [--format json|ssh] [--tags t1,t2]`: dumps SSH/FTP/WebDAV/Serial/Telnet profiles as structured JSON or OpenSSH config (e.g. `ctty export --format ssh --tags prod > ~/.ssh/config.d/prod.conf`).
+- **📦 Multi-source host import** — `ctty import` now supports `termius` (JSON export), `finalshell` (`conn` dir, incl. directory scan of `*.json`), and generic `json` (`hosts.json`), alongside existing `tabby`; shell completion updated accordingly.
+- **🔑 Credential vault portable migration** — new `ExportAll`/`ImportAll` (decrypt with local machine key → re-encrypt on target, optional overwrite) backing backup/restore flows.
+
 ## [1.1.2] - 2026-09-23
 
 ### Fixed

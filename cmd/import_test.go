@@ -19,4 +19,24 @@ func TestImportCommandRegistered(t *testing.T) {
 	if !strings.Contains(cmd.Short, "Import SSH") {
 		t.Errorf("short = %q", cmd.Short)
 	}
+
+	// Verify completions include termius, finalshell, and json
+	if cmd.ValidArgsFunction != nil {
+		args, _ := cmd.ValidArgsFunction(cmd, []string{}, "")
+		hasTermius, hasFinalShell, hasJSON := false, false, false
+		for _, a := range args {
+			if a == "termius" {
+				hasTermius = true
+			}
+			if a == "finalshell" {
+				hasFinalShell = true
+			}
+			if a == "json" {
+				hasJSON = true
+			}
+		}
+		if !hasTermius || !hasFinalShell || !hasJSON {
+			t.Errorf("expected termius, finalshell, and json in completions, got %v", args)
+		}
+	}
 }

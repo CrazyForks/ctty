@@ -56,7 +56,8 @@ ctty 是一个快速、原生的终端工具，用于管理你的所有连接 �
 - **🔒 安全** - 直接使用现有的 `~/.ssh/config` 文件（密码凭据独立存储，绝不污染标准 SSH 配置）
 - **📁 自定义配置** - 通过 `-c` 标志使用任意 SSH 配置文件
 - **🤖 Agent Skill / 非交互 CLI** - 内置 agent skill（Cursor / Claude Code / Codex）；不开 TUI 也能通过命令行完成全部操作，支持 JSON 输出，方便脚本和 AI 集成
-- **📦 主机导入** - 用 `ctty import --from tabby` 把 Tabby 的 SSH 配置迁过来
+- **📦 多工具主机导入** - 支持从 Tabby、Termius、FinalShell 或通用 JSON 一键迁移配置：`ctty import --from <source>`
+- **💾 配置备份与跨机迁移** - 支持全量配置与密码凭据归档与恢复（`ctty backup` / `ctty restore`，支持 AES-256-GCM 加密），或通过 `ctty export` 导出连接配置
 - **📂 SSH Include 支持** - 完整支持 SSH Include 指令，跨多文件组织配置
 - **⚙️ SSH 选项** - 通过直观的表单添加任意 SSH 配置选项
 - **🔄 自动转换** - 命令行和配置格式之间无缝转换
@@ -662,6 +663,24 @@ ctty exec --hosts web-01,db-01 -- df -h
 # 用 JSON 查询已保存的串口 / Telnet 设备（方便脚本对接）
 ctty serial list --format json
 ctty telnet search core --format json
+
+# 备份配置与凭据（支持可选 AES-256-GCM 密码加密）
+ctty backup -o my-backup.tar.gz
+ctty backup -p "passphrase" -o backup.ctty
+
+# 从备份归档中恢复配置文件
+ctty restore backup.tar.gz --dry-run
+ctty restore backup.ctty -p "passphrase" --overwrite
+
+# 导出连接配置为 JSON 或 OpenSSH 格式
+ctty export --format json
+ctty export --format ssh --tags prod
+
+# 从 Tabby、Termius、FinalShell 或通用 JSON 导入主机
+ctty import tabby --dry-run
+ctty import termius -f ./termius-export.json
+ctty import finalshell -f ~/.finalshell/conn
+ctty import json -f ./hosts.json
 
 # 指定界面语言（auto, zh, en）
 ctty --lang zh

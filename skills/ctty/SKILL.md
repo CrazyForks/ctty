@@ -24,7 +24,8 @@ the ctty config dir. Agents must drive it **non-interactively**.
 | Serial | `ctty serial list/search/info --format json` | Device manager TUI |
 | FTP | `ctty ftp list/search/info --format json`, `ctty ftp ls/get/put/mkdir/rm/rmdir/rename` | Site manager / dual-pane TUI |
 | WebDAV | `ctty webdav list/search/info --format json`, `ctty webdav ls/get/put/mkdir/rm/rmdir/rename` | Site manager / dual-pane TUI |
-| Import | `ctty import tabby --dry-run` then import | Confirm overwrite / Include |
+| Import | `ctty import tabby\|termius\|finalshell\|json --dry-run` then import | Confirm overwrite / Include |
+| Backup | `ctty backup`, `ctty restore`, `ctty export --format json\|ssh` | Safeguard secret passphrases |
 
 ## Hard rules
 
@@ -288,19 +289,52 @@ Note: ctty speaks Basic/Digest auth only — servers demanding NTLM/Negotiate
 (e.g. some IIS shares) fail with `NoAuthenticator ... 401`; that means the
 server side needs Basic enabled, not a ctty retry.
 
-### 7. Import (Tabby → SSH)
+### 7. Import (Tabby / Termius / FinalShell / JSON → SSH)
 
 Non-interactive. Always dry-run first. Secrets in the source app are **not**
 imported.
 
 ```bash
+# Tabby
 ctty --lang en --no-update-check import tabby --dry-run
 ctty --lang en --no-update-check import --from tabby
 ctty --lang en --no-update-check import tabby -f /path/to/tabby/config.yaml
+
+# Termius (JSON export)
+ctty --lang en --no-update-check import termius --dry-run
+ctty --lang en --no-update-check import termius -f /path/to/termius-export.json
+
+# FinalShell (JSON file or conn/ directory)
+ctty --lang en --no-update-check import finalshell --dry-run
+ctty --lang en --no-update-check import finalshell -f /path/to/finalshell/conn
+
+# Generic JSON ([{name, hostname, user, port, tags, ...}] or {"hosts": [...]})
+ctty --lang en --no-update-check import json -f /path/to/hosts.json --dry-run
+ctty --lang en --no-update-check import --from json -f /path/to/hosts.json
 ```
 
-Writes `~/.ssh/config.d/tabby.conf` and may add an `Include`. Existing Host
+Writes `~/.ssh/config.d/<source>.conf` and may add an `Include`. Existing Host
 names are skipped.
+
+### 8. Backup, Restore & Export
+
+```bash
+# Create unencrypted backup (.tar.gz)
+ctty --lang en --no-update-check backup --format json
+
+# Create AES-256-GCM encrypted backup (.ctty) with a passphrase
+ctty --lang en --no-update-check backup -p "mypassphrase" -o backup.ctty --format json
+
+# Restore from a backup archive (use -p if encrypted, --overwrite to replace existing files)
+ctty --lang en --no-update-check restore backup.tar.gz --dry-run --format json
+ctty --lang en --no-update-check restore backup.ctty -p "mypassphrase" --overwrite --format json
+
+# Export all profiles (SSH, FTP, WebDAV, Serial, Telnet) to JSON
+ctty --lang en --no-update-check export --format json
+
+# Export SSH hosts to OpenSSH format
+ctty --lang en --no-update-check export --format ssh --tags prod
+```
 
 ## Do not
 
@@ -314,11 +348,12 @@ names are skipped.
 | "WebDAV / browse cloud drive" | `webdav list|search|info|ls --format json`, `webdav get/put/mkdir/rm/rmdir/rename` (headless), quote `ctty webdav <name>` | WebDAV TUI |
 | "Port forward" | Explain `-L`/`-R`/`-D`; do not open TUI | `f` in the host list |
 | "Add a host" | `ctty add --name … --hostname …` (non-interactive flags) | `ctty add` TUI |
-| "Import Tabby" | `import tabby --dry-run`, then import if asked | Confirm result |
+| "Import hosts" | `import <source> --dry-run`, then import if asked | Confirm result |
+| "Backup / restore" | `ctty backup` / `ctty restore` (CLI) | Safeguard passphrase |
 
 Do not treat Cobra subcommand names as SSH hosts: `add`, `edit`, `move`,
 `search`, `info`, `sftp`, `serial`, `telnet`, `ftp`, `webdav`, `import`, `update`, `completion`,
-`put`, `get`, `scp`, `exec`.
+`put`, `get`, `scp`, `exec`, `peek`, `ping`, `backup`, `restore`, `export`.
 
 ## Examples
 

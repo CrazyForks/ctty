@@ -167,3 +167,57 @@ func TestNormalizeVaultGOOS(t *testing.T) {
 		}
 	}
 }
+
+func TestExportAndImportAll(t *testing.T) {
+	resetDefaultStore(t)
+	tmpDir, err := os.MkdirTemp("", "ctty-cred-export-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	filePath := filepath.Join(tmpDir, "credentials.json")
+	key := deriveMachineKey()
+
+	store := &CredentialStore{
+		credentials: make(map[string]Credential),
+		filePath:    filePath,
+		masterKey:   key,
+	}
+
+	storeMu.Lock()
+	defaultStore = store
+	storeMu.Unlock()
+
+	_ = SetPassword("host1", "secret1")
+	_ = SetPassword("host2", "secret2")
+
+	exported, err := ExportAll()
+	if err != nil {
+		t.Fatalf("ExportAll: %v", err)
+	}
+	if len(exported) != 2 || exported["host1"] != "secret1" || exported["host2"] != "secret2" {
+		t.Fatalf("unexpected exported: %+v", exported)
+	}
+
+	// Create a new fresh store and import
+	filePath2 := filepath.Join(tmpDir, "credentials2.json")
+	store2 := &CredentialStore{
+		credentials: make(map[string]Credential),
+		filePath:    filePath2,
+		masterKey:   key,
+	}
+	storeMu.Lock()
+	defaultStore = store2
+	storeMu.Unlock()
+
+	if err := ImportAll(exported, true); err != nil {
+		t.Fatalf("ImportAll: %v", err)
+	}
+
+	pw1, ok1 := GetPassword("host1")
+	pw2, ok2 := GetPassword("host2")
+	if !ok1 || pw1 != "secret1" || !ok2 || pw2 != "secret2" {
+		t.Fatalf("unexpected imported passwords: %q (%v), %q (%v)", pw1, ok1, pw2, ok2)
+	}
+}
