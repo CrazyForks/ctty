@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.1.2] - 2026-09-23
+
+### Fixed
+
+- **🔄 Port forwarding reuses saved passwords** — `f` Local/Remote/Dynamic forwarding now injects the same `SSH_ASKPASS` vault bridge as direct connect, so hosts with stored credentials no longer fall back to an interactive password prompt.
+
 ## [1.1.1] - 2026-09-22
 
 ### Fixed
@@ -25,7 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **JetBrains update-success dialog alignment** — Corrected the one-column right-border offset caused by the check mark emoji (U+2705) in English and Chinese update-success messages.
 - **Quick Peek SSH error details** — Failed health probes now show SSH diagnostic output alongside the exit status instead of only `exit status 255`. Terminal control sequences are removed and long diagnostics are limited to their final 512 characters. This improves error reporting; it does not resolve the underlying intermittent SSH disconnection.
-
 ## [1.0.1] - 2026-09-16
 
 ### Fixed
