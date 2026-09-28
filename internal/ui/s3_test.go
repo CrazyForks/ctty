@@ -714,3 +714,82 @@ func TestS3BrowserRenameFlow(t *testing.T) {
 		t.Fatalf("expected old local file to be removed: %v", err)
 	}
 }
+
+func TestS3ErrorEscExitsCleanlyWithoutLooping(t *testing.T) {
+	i18n.SetLang("en")
+	m := NewS3Form(NewStyles(100), 100, 30, "test-disconnected-site")
+	m.mode = s3Error
+	m.loadError = "dial tcp 192.168.1.100:9000: connect: connection refused"
+
+	// Verify error view is rendered
+	view := m.View()
+	if !strings.Contains(view, "connection refused") {
+		t.Fatalf("expected error view to contain 'connection refused', got:\n%s", view)
+	}
+
+	// Pressing 'esc' in s3Error mode MUST return s3DoneMsg to exit immediately, without retrying
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if cmd == nil {
+		t.Fatal("expected command from Esc in s3Error mode, got nil")
+	}
+	msg := cmd()
+	if _, ok := msg.(s3DoneMsg); !ok {
+		t.Fatalf("expected s3DoneMsg, got %T: %+v", msg, msg)
+	}
+	fm := updated.(*s3FormModel)
+	if fm.mode != s3Error {
+		t.Fatalf("model mode should not have transitioned to %v before message processing", fm.mode)
+	}
+
+	// Also test 'q' and 'enter' and 'ctrl+c' in s3Error mode
+	for _, key := range []tea.KeyMsg{
+		{Type: tea.KeyRunes, Runes: []rune{'q'}},
+		{Type: tea.KeyEnter},
+		{Type: tea.KeyCtrlC},
+	} {
+		_, cmd = m.Update(key)
+		if cmd == nil {
+			t.Fatalf("expected command for key %v in s3Error mode, got nil", key)
+		}
+		msg = cmd()
+		if _, ok := msg.(s3DoneMsg); !ok {
+			t.Fatalf("key %v: expected s3DoneMsg, got %T: %+v", key, msg, msg)
+		}
+	}
+}
+
+func TestS3ErrorEscTransitionsBackToS3Sites(t *testing.T) {
+	i18n.SetLang("en")
+	m := NewModel(nil, "", false, "v1.3.0", true)
+	m.ready = true
+	m.width, m.height = 100, 30
+	m.viewMode = ViewS3Browse
+	m.s3FromSites = true
+	m.s3Form = NewS3Form(m.styles, m.width, m.height, "broken-site")
+	m.s3Form.mode = s3Error
+	m.s3Form.loadError = "connect timeout"
+
+	// Esc in ViewS3Browse when in s3Error
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	m = updated.(Model)
+	if cmd == nil {
+		t.Fatal("expected cmd from Esc")
+	}
+	doneMsg := cmd()
+	if _, ok := doneMsg.(s3DoneMsg); !ok {
+		t.Fatalf("expected s3DoneMsg, got %T", doneMsg)
+	}
+
+	// Model handles s3DoneMsg and returns to ViewS3
+	updated, _ = m.Update(doneMsg)
+	m = updated.(Model)
+	if m.viewMode != ViewS3 {
+		t.Fatalf("viewMode = %v, want ViewS3", m.viewMode)
+	}
+	if m.s3Form != nil {
+		t.Fatal("expected s3Form to be nil after s3DoneMsg")
+	}
+	if m.s3SitesForm == nil {
+		t.Fatal("expected s3SitesForm to be restored")
+	}
+}
