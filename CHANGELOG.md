@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.3.1] - 2026-09-24
+
+### Fixed
+
+- **☁️ S3 browser error exit no longer retry-loops** — `Esc` / `q` / `Enter` / `Ctrl+C` on the S3 connection-error screen now closes the client and returns directly to the S3 site list (`s3DoneMsg`) instead of re-issuing `fetchS3EntriesCmd` and looping on unreachable endpoints; error view now renders with priority even while `loading`, and bucket-root (`cwd == bucket`) load failures correctly enter the error state.
+
 ## [1.3.0] - 2026-09-24
 
 ### Added

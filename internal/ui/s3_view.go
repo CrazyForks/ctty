@@ -240,7 +240,7 @@ func (m *s3FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loading = false
 		m.refreshing = false
 		if msg.err != nil {
-			if len(m.entries) == 0 && m.cwd == "" {
+			if len(m.entries) == 0 && (m.cwd == "" || m.cwd == m.site.Bucket) {
 				m.loadError = msg.err.Error()
 				m.mode = s3Error
 				return m, nil
@@ -360,16 +360,18 @@ func (m *s3FormModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case s3DeleteConfirm, s3DownloadConfirm:
 		return m.handleConfirmDialog(msg)
 	case s3Error:
-		if msg.String() == "esc" || msg.String() == "q" {
-			m.mode = s3Browse
-			m.loadError = ""
-			return m, fetchS3EntriesCmd(m.client, m.cwd)
+		if msg.String() == "esc" || msg.String() == "enter" || msg.String() == "q" || msg.String() == "ctrl+c" {
+			if m.client != nil {
+				_ = m.client.Close()
+				m.client = nil
+			}
+			return m, func() tea.Msg { return s3DoneMsg{} }
 		}
 		return m, nil
 	}
 
 	switch msg.String() {
-	case "esc", "q":
+	case "esc", "q", "ctrl+c":
 		if m.transferring {
 			m.cancelTransfer()
 			return m, nil
@@ -1437,15 +1439,15 @@ func (m *s3FormModel) View() string {
 	m.localTbl.SetHeight(th)
 	m.table.SetHeight(th)
 
+	if m.mode == s3Error {
+		return m.renderErrorView()
+	}
 	if m.loading && m.client == nil {
 		inner := formPageInnerWidth(m.width)
 		body := lipgloss.NewStyle().Width(inner).Render(
 			m.styles.FormTitle.Render(" S3 — "+m.site.Name+" ") + "\n\n" +
 				"  Connecting to S3: " + m.site.Name + "…")
 		return renderFormPage(m.styles, m.width, body)
-	}
-	if m.mode == s3Error {
-		return m.renderErrorView()
 	}
 	if m.showInfo && m.entryInfo != nil {
 		return m.renderInfoView()
