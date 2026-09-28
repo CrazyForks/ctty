@@ -1,8 +1,8 @@
 # ctty CLI reference
 
-ctty is SSH + serial + telnet + SFTP + FTP + WebDAV. SSH `search` / `info` / remote-exec,
-`import`, and serial/telnet/ftp/webdav `list|search|info` are non-interactive CLIs.
-Serial/telnet/FTP/WebDAV inventories are JSON files under the ctty config dir.
+ctty is SSH + serial + telnet + SFTP + FTP + WebDAV + S3. SSH `search` / `info` / remote-exec,
+`import`, and serial/telnet/ftp/webdav/s3 `list|search|info` are non-interactive CLIs.
+Serial/telnet/FTP/WebDAV/S3 inventories are JSON files under the ctty config dir.
 
 ## Persistent flags (all commands)
 
@@ -309,6 +309,22 @@ Headless transfers mirror FTP: `webdav ls/get/put/mkdir/rm/rmdir/rename`
 Agents must not open `ctty webdav` / `ctty webdav <name>` TUI.
 Auth is Basic/Digest only — `NoAuthenticator ... 401` means the server
 demands NTLM/Negotiate; report it, do not retry.
+
+## `ctty s3 list|search|info`
+
+```bash
+ctty s3 list --format json
+ctty s3 search backups --format json
+ctty s3 info minio-local --format json
+```
+
+JSON array / object of `{name,endpoint,bucket,region,access_key,use_ssl,path_style,insecure_tls,tags}`. Site file:
+`~/.config/ctty/s3.json` (0600). Secret access keys encrypted in SSH
+`credentials.json` vault under `s3:` names.
+Headless object operations: `s3 ls/get/put/mkdir/rm/rename`
+(dirs recursive, progress on stderr).
+Agents must not open `ctty s3` / `ctty s3 <name>` TUI.
+Supports AWS S3, MinIO, Cloudflare R2, Aliyun OSS, Ceph, and S3-compatible endpoints.
 
 ## `ctty backup` and `ctty restore`
 

@@ -174,7 +174,6 @@ func loadSSHHosts() ([]config.SSHHost, error) {
 	return config.ParseSSHConfig()
 }
 
-
 // printExecHostList writes the selected Host aliases for --list-hosts.
 // Human mode: one alias per line, no banners. JSON mode: a JSON string array.
 // Empty selection prints nothing (or []) and is not an error.

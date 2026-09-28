@@ -13,13 +13,13 @@
 [![License](https://img.shields.io/github/license/zsuroy/ctty?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey?style=for-the-badge)](https://github.com/zsuroy/ctty/releases)
 
-> **A lightweight, all-in-one connection manager — SSH, serial, telnet, SFTP, FTP, and WebDAV in a single TUI** 🔥
+> **A lightweight, all-in-one connection manager — SSH, serial, telnet, SFTP, FTP, WebDAV, and S3 in a single TUI** 🔥
 
-ctty is a fast, native terminal tool for managing all your connections — SSH hosts, serial devices, telnet endpoints, SFTP file transfers, FTP sites, and WebDAV servers — without the overhead of Electron apps. Built with Go and featuring an intuitive TUI interface, it brings the convenience of GUI connection managers like Tabby to the terminal, with zero bloat.
+ctty is a fast, native terminal tool for managing all your connections — SSH hosts, serial devices, telnet endpoints, SFTP file transfers, FTP sites, WebDAV servers, and S3 object storage — without the overhead of Electron apps. Built with Go and featuring an intuitive TUI interface, it brings the convenience of GUI connection managers like Tabby to the terminal, with zero bloat.
 
 **Why ctty?**
 - **Tabby too heavy?** ctty is a single ~5MB binary, no Electron, no browser engine — just pure Go
-- **Need serial + telnet + SFTP + FTP + WebDAV + SSH in one tool?** Most terminal emulators only do SSH; ctty covers them all in a single binary — serial/telnet/FTP/WebDAV/SFTP are built in, SSH reuses your system OpenSSH
+- **Need serial + telnet + SFTP + FTP + WebDAV + S3 + SSH in one tool?** Most terminal emulators only do SSH; ctty covers them all in a single binary — serial/telnet/FTP/WebDAV/S3/SFTP are built in, SSH reuses your system OpenSSH
 - **Want to stay in the terminal?** No context switching between apps — everything is keyboard-driven
 
 <p align="center">
@@ -36,7 +36,7 @@ ctty is a fast, native terminal tool for managing all your connections — SSH h
 - **🎨 Beautiful TUI Interface** - Navigate your SSH hosts with an elegant, interactive terminal UI and zero vertical layout jitter
 - **⚡ Quick Connect & Health Peek** - Connect instantly with `Enter` or inspect real-time system metrics (uptime, CPU load, memory bar, root disk space) via **Quick Peek** (`v` / `P`) without opening a full shell
 - **📦 Multi-Select & Batch Exec** - Press `Space` to multi-select hosts with visual `[ ]` / `[✓]` checkboxes, `Ctrl+A` to select all, `p` to probe selected hosts, `y` to copy commands, and `x` to batch-execute remote snippets in parallel with an aggregated scrollable results modal
-- **🔄 Unified Cross-Protocol Navigation** - Switch between SSH, Serial (`t`), Telnet (`T`), FTP (`F`), WebDAV (`W`), and Local File Browser (`b`) directly via hotkeys or `[` / `]` tabs without leaving your current view
+- **🔄 Unified Cross-Protocol Navigation** - Switch between SSH, Serial (`t`), Telnet (`T`), FTP (`F`), WebDAV (`W`), S3 (`O`), and Local File Browser (`b`) directly via hotkeys or `[` / `]` tabs without leaving your current view
 - **🏷️ Tag Organization & Quick Drawer** - Organize hosts with automatic color-coding (e.g., `#prod` in red, `#dev` in green); press `w` to open an interactive Tag Drawer with host counts and 1-key filtering (`1`-`9`), or use `hidden` tag to hide sensitive hosts
 - **📝 Direct Config Editing** - Press `E` to open your active SSH configuration directly in `$EDITOR` / `$VISUAL` (vim, nano, notepad) with automatic live config reload upon exit
 - **📋 Universal Clipboard** - Copy commands (`y`) seamlessly across local terminals, remote SSH sessions, and tmux via OSC 52 fallback
@@ -49,6 +49,7 @@ ctty is a fast, native terminal tool for managing all your connections — SSH h
 - **📂 SFTP File Transfer** - Full-featured SFTP browser (`o` key) with remote browsing, upload/download queue with progress and cancel, transfer bell (`\a`), search, mkdir/delete, plus headless CLI transfers (`put`/`get`/`scp` + `sftp ls/mkdir/rm/rmdir/rename`)
 - **📁 FTP Site Manager** - Plain-FTP support (`F` key) for hosts without SSH: tagged site inventory, dual-pane local|remote browser, mkdir/delete/rename in both panes, single/dual layout toggle, passwords in the encrypted vault, plus headless CLI transfers (`ftp ls/get/put/mkdir/rm/rmdir/rename`)
 - **🌐 WebDAV Site Manager** - WebDAV support (`W` key) for cloud storage (Nextcloud, ownCloud, NAS, Apache/Nginx WebDAV): tagged site inventory, dual-pane browser, directory recursion, single/dual layout toggle, passwords in the encrypted vault, plus headless CLI operations (`webdav ls/get/put/mkdir/rm/rmdir/rename`)
+- **☁️ S3 Object Storage** - S3 & S3-compatible object storage support (`O` key) for AWS S3, MinIO, Cloudflare R2, Aliyun OSS, and Ceph: tagged site inventory, dual-pane browser, bucket/prefix navigation, mkdir/delete/rename in both panes, upload/download queue with progress, single/dual layout toggle, secret keys in the encrypted vault, plus headless CLI operations (`s3 ls/get/put/mkdir/rm/rename`)
 - **🗂️ Local File Browser** - Standalone local filesystem manager (`b` key or `ctty browse [path]`): navigate, search, sort, mkdir/delete/rename with confirms, file details, open-with-default-app, reveal in file manager
 - **🔑 Password Storage & Zero-Touch Auto-Login** - Save SSH passwords securely in a local AES-256-GCM encrypted vault (`~/.config/ctty/credentials.json`, `0600` permissions) with native OpenSSH `SSH_ASKPASS` protocol bridge (zero third-party dependencies, works on macOS, Linux, Windows, and Termux)
 - **🖥️ Split-Pane & Small Terminal Friendly** - All forms and dialogs (Add/Edit Host, Port Forwarding, Host Info, Help Menu, Quick Peek, Batch Exec) feature focus-following dynamic viewport scrolling with fixed headers/footers. Works flawlessly in tmux/Zellij splits, VS Code/JetBrains embedded terminals, and tiling WMs (i3/Sway) down to 8~12 lines with zero height blocking or truncation
@@ -171,7 +172,7 @@ ctty
 - `w` - Open interactive **Tag Filter Drawer** (`1`-`9` or `Enter` to filter, `c` to clear)
 - `c` - Clear active tag filter
 - `E` - Open active SSH configuration file directly in `$EDITOR` (vim/nano/notepad)
-- `[` / `]` - Switch to previous / next protocol tab (SSH ⇄ Serial ⇄ Telnet ⇄ FTP ⇄ WebDAV ⇄ Local Browser)
+- `[` / `]` - Switch to previous / next protocol tab (SSH ⇄ Serial ⇄ Telnet ⇄ FTP ⇄ WebDAV ⇄ S3 ⇄ Local Browser)
 - `g` / `Home` - Jump to first row
 - `G` / `End` - Jump to last row
 - `1`-`9` - Quick jump to row
@@ -186,6 +187,7 @@ ctty
 - `o` - Open SFTP file browser for selected host
 - `F` - Open FTP site manager
 - `W` - Open WebDAV site manager
+- `O` - Open S3 object storage manager
 - `b` - Open local file browser
 - `S` - Open Settings & Preferences (Language, Updates, ESC behavior)
 - `U` - Open self-update modal (when an update is available)
@@ -456,6 +458,63 @@ ctty webdav rename nextcloud /Documents/a.pdf /Documents/b.pdf
 Progress is on stderr; directories are recursive; passwords are encrypted in the vault.
 
 
+### S3 Object Storage
+
+Press `O` (Shift+O) from the main TUI or cycle tabs with `[` / `]` to open the S3 object storage manager — connect to AWS S3, MinIO, Cloudflare R2, Aliyun OSS, Ceph, or any S3-compatible object storage endpoint.
+
+**S3 site manager:**
+- `Enter` - Connect and open browser (lists buckets or objects in configured default bucket)
+- `a` - Add S3 site (name, endpoint, bucket, region, access key, secret key, use SSL, path style, insecure TLS, tags)
+- `e` - Edit site
+- `d` - Delete site (with confirmation modal)
+- `Space` / `Ctrl+A` - Multi-select sites for batch deletion
+- `y` - Copy endpoint URL
+- `i` - Inspect site details
+- `p` - Probe connectivity / bucket access
+- `w` - Filter by tag
+- `/` - Search/filter sites
+- `Esc` - Back
+
+Saved sites live in `~/.config/ctty/s3.json` (0600). Secret keys are encrypted in the shared credentials vault (`~/.config/ctty/credentials.json`, S3 entries under `s3:` names) using AES-256-GCM.
+
+**S3 browser (dual-pane local | remote):**
+- `Tab` / `Shift+Tab` - Toggle focus between local and remote pane
+- `Enter` / `l` / `→` - Open bucket/directory or start download/upload
+- `h` / `←` / `Backspace` - Navigate up to parent directory or bucket list
+- `v` - Toggle between dual-pane and single-pane layout (persisted)
+- `i` - Inspect entry details (size, modified, ETag, path)
+- `n` / `a` - Create new bucket or directory marker (in focused pane)
+- `d` - Delete file or directory prefix (in focused pane, with confirm)
+- `R` - Rename / move file or directory prefix (in focused pane)
+- `r` - Refresh listing
+- `/` - Search/filter files
+- `Esc` - Cancel active transfer / go back
+
+File management (`n`/`d`/`R`) works in both panes. Narrow terminals (under 80 columns) automatically adapt to single-pane layout.
+
+You can also open the site manager or browser directly from CLI:
+```bash
+ctty s3              # S3 site manager TUI
+ctty s3 minio        # Open browser directly for a saved site
+```
+
+**Headless S3 operations:**
+```bash
+ctty s3 list                                         # List configured S3 sites
+ctty s3 list --format json                           # Machine-readable site list
+ctty s3 ls minio                                     # List buckets or objects at root
+ctty s3 ls minio my-bucket/docs --format json        # Machine-readable listing
+ctty s3 get minio my-bucket/docs/report.pdf ./report.pdf # Download file or recursive prefix
+ctty s3 put minio ./backup/ my-bucket/backup/        # Upload file or recursive directory
+ctty s3 mkdir minio my-bucket/Archive                # Create bucket or directory marker
+ctty s3 rm minio my-bucket/old.pdf                   # Delete object
+ctty s3 rm minio my-bucket/TempDir -r                # Recursive prefix deletion
+ctty s3 rename minio my-bucket/old.txt new.txt       # Rename / move object
+ctty s3 mv minio my-bucket/olddir my-bucket/newdir   # Rename / move prefix
+```
+Progress is on stderr; transfers support directory recursion; secret keys are loaded securely from the encrypted vault.
+
+
 ### Port Forwarding
 
 ctty provides an intuitive interface for setting up SSH port forwarding. Press `f` while selecting a host to open the port forwarding setup:
@@ -654,6 +713,21 @@ ctty webdav mkdir nextcloud /Documents/Archive
 ctty webdav rm nextcloud /Documents/old.pdf
 ctty webdav rmdir nextcloud /Documents/TempDir
 ctty webdav rename nextcloud /Documents/a.pdf /Documents/b.pdf
+
+# Open S3 site manager, or a site browser directly
+ctty s3
+ctty s3 minio
+
+# S3 headless operations (no TUI, progress on stderr)
+ctty s3 list --format json
+ctty s3 ls minio my-bucket/docs --format json
+ctty s3 get minio my-bucket/docs/report.pdf ./report.pdf
+ctty s3 put minio ./backup/ my-bucket/backup/
+ctty s3 mkdir minio my-bucket/Archive
+ctty s3 rm minio my-bucket/old.pdf
+ctty s3 rm minio my-bucket/TempDir -r
+ctty s3 rename minio my-bucket/old.txt new.txt
+ctty s3 mv minio my-bucket/olddir my-bucket/newdir
 
 # Browse the local filesystem (search, mkdir/delete/rename, file details)
 ctty browse

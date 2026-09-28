@@ -2,42 +2,65 @@ package ui
 
 import (
 	"fmt"
-	"net"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/zsuroy/ctty/internal/ftpconfig"
-	"github.com/zsuroy/ctty/internal/ftpcred"
 	"github.com/zsuroy/ctty/internal/i18n"
+	"github.com/zsuroy/ctty/internal/s3client"
+	"github.com/zsuroy/ctty/internal/s3config"
+	"github.com/zsuroy/ctty/internal/s3cred"
 )
 
-// Site manager for saved FTP sites (mirrors telnet/serial list pattern).
-type ftpSitesModel struct {
+type s3SitesDoneMsg struct{}
+
+type s3ShowHelpMsg struct{}
+
+type s3OpenBrowserMsg struct {
+	siteName string
+}
+
+type s3ProbeMsg struct {
+	name     string
+	up       bool
+	duration time.Duration
+}
+
+func probeS3SiteCmd(s s3config.S3Site) tea.Cmd {
+	return func() tea.Msg {
+		start := time.Now()
+		err := s3client.Probe(s, 3*time.Second)
+		dur := time.Since(start)
+		return s3ProbeMsg{name: s.Name, up: err == nil, duration: dur}
+	}
+}
+
+// Site manager for saved S3 sites.
+type s3SitesModel struct {
 	styles        Styles
 	width         int
 	height        int
 	table         table.Model
-	sites         []ftpconfig.FTPSite
-	filtered      []ftpconfig.FTPSite
+	sites         []s3config.S3Site
+	filtered      []s3config.S3Site
 	searchInput   textinput.Model
 	searchMode    bool
 	deleteIdx     int
 	confirmDel    bool
 	ready         bool
-	addForm       *ftpAddFormModel
+	addForm       *s3AddFormModel
 	addMode       bool
 	editMode      bool
 	editOldName   string
 	showInfo      bool
-	infoSite      *ftpconfig.FTPSite
+	infoSite      *s3config.S3Site
 	infoScroll    int
 	statusMessage string
 	statusExpiry  time.Time
@@ -51,38 +74,19 @@ type ftpSitesModel struct {
 	latencies       map[string]time.Duration
 }
 
-func (m *ftpSitesModel) setStatus(msg string) {
+func (m *s3SitesModel) setStatus(msg string) {
 	m.statusMessage = msg
 	m.statusExpiry = time.Now().Add(3 * time.Second)
 }
 
-func (m *ftpSitesModel) statusActive() bool {
+func (m *s3SitesModel) statusActive() bool {
 	return m.statusMessage != "" && time.Now().Before(m.statusExpiry)
 }
 
-type ftpProbeMsg struct {
-	name     string
-	up       bool
-	duration time.Duration
-}
-
-func probeFTPSiteCmd(s ftpconfig.FTPSite) tea.Cmd {
-	return func() tea.Msg {
-		start := time.Now()
-		addr := net.JoinHostPort(s.Host, strconv.Itoa(s.Port))
-		conn, err := net.DialTimeout("tcp", addr, 3*time.Second)
-		dur := time.Since(start)
-		if err == nil {
-			_ = conn.Close()
-		}
-		return ftpProbeMsg{name: s.Name, up: err == nil, duration: dur}
-	}
-}
-
-func (m *ftpSitesModel) startProbeAllCmd() tea.Cmd {
+func (m *s3SitesModel) startProbeAllCmd() tea.Cmd {
 	var cmds []tea.Cmd
 	for _, s := range m.sites {
-		cmds = append(cmds, probeFTPSiteCmd(s))
+		cmds = append(cmds, probeS3SiteCmd(s))
 	}
 	if len(cmds) == 0 {
 		return nil
@@ -90,14 +94,14 @@ func (m *ftpSitesModel) startProbeAllCmd() tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (m *ftpSitesModel) startProbeSelectedCmd() tea.Cmd {
+func (m *s3SitesModel) startProbeSelectedCmd() tea.Cmd {
 	if len(m.selectedSites) == 0 {
 		return m.startProbeAllCmd()
 	}
 	var cmds []tea.Cmd
 	for _, s := range m.sites {
 		if m.selectedSites[s.Name] {
-			cmds = append(cmds, probeFTPSiteCmd(s))
+			cmds = append(cmds, probeS3SiteCmd(s))
 		}
 	}
 	if len(cmds) == 0 {
@@ -106,11 +110,11 @@ func (m *ftpSitesModel) startProbeSelectedCmd() tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (m *ftpSitesModel) isSiteSelected(name string) bool {
+func (m *s3SitesModel) isSiteSelected(name string) bool {
 	return m.selectedSites != nil && m.selectedSites[name]
 }
 
-func (m *ftpSitesModel) toggleSiteSelected(name string) {
+func (m *s3SitesModel) toggleSiteSelected(name string) {
 	if m.selectedSites == nil {
 		m.selectedSites = make(map[string]bool)
 	}
@@ -121,11 +125,11 @@ func (m *ftpSitesModel) toggleSiteSelected(name string) {
 	}
 }
 
-func (m *ftpSitesModel) clearSelection() {
+func (m *s3SitesModel) clearSelection() {
 	m.selectedSites = make(map[string]bool)
 }
 
-func (m *ftpSitesModel) toggleSelectAllVisible() {
+func (m *s3SitesModel) toggleSelectAllVisible() {
 	if m.selectedSites == nil {
 		m.selectedSites = make(map[string]bool)
 	}
@@ -150,11 +154,11 @@ func (m *ftpSitesModel) toggleSelectAllVisible() {
 	}
 }
 
-func (m *ftpSitesModel) getSelectedSites() []ftpconfig.FTPSite {
+func (m *s3SitesModel) getSelectedSites() []s3config.S3Site {
 	if len(m.selectedSites) == 0 {
 		return nil
 	}
-	var res []ftpconfig.FTPSite
+	var res []s3config.S3Site
 	for _, s := range m.sites {
 		if m.selectedSites[s.Name] {
 			res = append(res, s)
@@ -163,7 +167,7 @@ func (m *ftpSitesModel) getSelectedSites() []ftpconfig.FTPSite {
 	return res
 }
 
-func siteHasTag(site ftpconfig.FTPSite, targetTag string) bool {
+func s3SiteHasTag(site s3config.S3Site, targetTag string) bool {
 	cleanTarget := strings.ToLower(strings.TrimPrefix(strings.TrimSpace(targetTag), "#"))
 	if cleanTarget == "" {
 		return false
@@ -177,12 +181,12 @@ func siteHasTag(site ftpconfig.FTPSite, targetTag string) bool {
 	return false
 }
 
-type ftpTagCountItem struct {
+type s3TagCountItem struct {
 	tag   string
 	count int
 }
 
-func (m *ftpSitesModel) getTagCounts() []ftpTagCountItem {
+func (m *s3SitesModel) getTagCounts() []s3TagCountItem {
 	counts := make(map[string]int)
 	for _, s := range m.sites {
 		for _, t := range s.Tags {
@@ -193,9 +197,9 @@ func (m *ftpSitesModel) getTagCounts() []ftpTagCountItem {
 			counts[clean]++
 		}
 	}
-	items := make([]ftpTagCountItem, 0, len(counts))
+	items := make([]s3TagCountItem, 0, len(counts))
 	for tag, count := range counts {
-		items = append(items, ftpTagCountItem{tag: tag, count: count})
+		items = append(items, s3TagCountItem{tag: tag, count: count})
 	}
 	sort.Slice(items, func(i, j int) bool {
 		if items[i].count != items[j].count {
@@ -206,7 +210,7 @@ func (m *ftpSitesModel) getTagCounts() []ftpTagCountItem {
 	return items
 }
 
-func (m *ftpSitesModel) siteDisplayName(s ftpconfig.FTPSite) string {
+func (m *s3SitesModel) siteDisplayName(s s3config.S3Site) string {
 	prefix := "[ ] "
 	if m.isSiteSelected(s.Name) {
 		prefix = "[✓] "
@@ -237,7 +241,7 @@ func (m *ftpSitesModel) siteDisplayName(s ftpconfig.FTPSite) string {
 	return prefix + name
 }
 
-func (m *ftpSitesModel) renderTagPicker() string {
+func (m *s3SitesModel) renderTagPicker() string {
 	tagItems := m.getTagCounts()
 	title := m.styles.FocusedLabel.Bold(true).Render("🏷️  " + i18n.T("tags.title"))
 	var rows []string
@@ -248,22 +252,25 @@ func (m *ftpSitesModel) renderTagPicker() string {
 	if m.tagPickerCursor == 0 {
 		cursor0 = "> "
 	}
-	activeMark0 := "○"
+	label0 := i18n.T("tags.all_hosts")
 	if m.selectedTag == "" {
-		activeMark0 = "●"
+		label0 = "● " + label0
+	} else {
+		label0 = "  " + label0
 	}
-	line0 := fmt.Sprintf("%s%s [%s]  %s", cursor0, activeMark0, i18n.T("tags.all"), allCount)
+	row0 := fmt.Sprintf("%s%-14s %s", cursor0, label0, allCount)
 	if m.tagPickerCursor == 0 {
-		line0 = m.styles.Selected.Render(line0)
+		row0 = m.styles.Selected.Render(row0)
 	}
-	rows = append(rows, line0)
+	rows = append(rows, row0)
+
 	for i, item := range tagItems {
 		idx := i + 1
 		cursor := "  "
 		if m.tagPickerCursor == idx {
 			cursor = "> "
 		}
-		activeMark := "○"
+		activeMark := " "
 		if m.selectedTag == item.tag {
 			activeMark = "●"
 		}
@@ -282,16 +289,16 @@ func (m *ftpSitesModel) renderTagPicker() string {
 	return renderCardBox(m.styles.FormContainer, m.width, rows...)
 }
 
-type ftpOpenBrowserMsg struct {
-	siteName string
-}
-
-// NewFTPSitesForm creates the FTP site list manager.
-func NewFTPSitesForm(styles Styles, width, height int) *ftpSitesModel {
-	m := &ftpSitesModel{
-		styles: styles,
-		width:  width,
-		height: height,
+// NewS3SitesForm creates a site manager for S3 sites.
+func NewS3SitesForm(styles Styles, width, height int) *s3SitesModel {
+	m := &s3SitesModel{
+		styles:        styles,
+		width:         width,
+		height:        height,
+		deleteIdx:     -1,
+		selectedSites: make(map[string]bool),
+		probeStatus:   make(map[string]bool),
+		latencies:     make(map[string]time.Duration),
 	}
 	m.searchInput = textinput.New()
 	m.searchInput.Placeholder = i18n.T("search.placeholder")
@@ -302,32 +309,60 @@ func NewFTPSitesForm(styles Styles, width, height int) *ftpSitesModel {
 	return m
 }
 
-func (m *ftpSitesModel) Init() tea.Cmd { return nil }
+func (m *s3SitesModel) Init() tea.Cmd { return nil }
 
-func (m *ftpSitesModel) renderInfoView() string {
+func (m *s3SitesModel) renderInfoView() string {
 	s := m.infoSite
-	user := s.User
-	if user == "" {
-		user = "anonymous"
+	if s == nil {
+		return ""
 	}
-	pass := i18n.T("info.not_set")
-	if _, ok := ftpcred.GetPassword(s.Name); ok {
-		pass = i18n.T("info.password_saved")
+
+	bucket := s.Bucket
+	if bucket == "" {
+		bucket = i18n.T("info.not_set")
+	}
+	region := s.Region
+	if region == "" {
+		region = i18n.T("info.not_set")
+	}
+	ak := s.AccessKey
+	if ak == "" {
+		ak = i18n.T("info.not_set")
+	}
+	sk := i18n.T("info.not_set")
+	if _, ok := s3cred.GetSecretKey(s.Name); ok {
+		sk = i18n.T("info.password_saved")
+	}
+	ssl := i18n.T("common.no")
+	if s.UseSSL {
+		ssl = i18n.T("common.yes")
+	}
+	pathStyle := i18n.T("common.no")
+	if s.PathStyle {
+		pathStyle = i18n.T("common.yes")
+	}
+	insecure := i18n.T("common.no")
+	if s.InsecureTLS {
+		insecure = i18n.T("common.yes")
 	}
 	tags := strings.Join(s.Tags, ", ")
 	if tags == "" {
 		tags = i18n.T("info.not_set")
 	}
 
-	titleText := m.styles.Header.Render(strings.TrimSpace(i18n.T("ftp.info_title", s.Name)))
+	titleText := m.styles.Header.Render(strings.TrimSpace(fmt.Sprintf(i18n.T("s3.info_title"), s.Name)))
 
 	rows := [][2]string{
 		{i18n.T("info.host_name") + ":", s.Name},
-		{i18n.T("info.hostname_ip") + ":", s.Host},
-		{i18n.T("info.port") + ":", fmt.Sprintf("%d", s.Port)},
-		{i18n.T("info.user") + ":", user},
+		{i18n.T("s3.field_endpoint") + ":", s.Endpoint},
+		{i18n.T("s3.field_bucket") + ":", bucket},
+		{i18n.T("s3.field_region") + ":", region},
+		{i18n.T("s3.field_access_key") + ":", ak},
+		{i18n.T("s3.field_secret_key") + ":", sk},
+		{i18n.T("s3.field_use_ssl") + ":", ssl},
+		{i18n.T("s3.field_path_style") + ":", pathStyle},
+		{i18n.T("s3.field_insecure_tls") + ":", insecure},
 		{i18n.T("info.tags") + ":", tags},
-		{i18n.T("info.password") + ":", pass},
 	}
 
 	maxLabelW := 0
@@ -379,7 +414,7 @@ func (m *ftpSitesModel) renderInfoView() string {
 
 	frameH := container.GetVerticalFrameSize()
 	headerH := lipgloss.Height(titleText)
-	helpText := m.styles.HelpText.Width(innerW).Render(i18n.T("ftp.info_help"))
+	helpText := m.styles.HelpText.Width(innerW).Render(i18n.T("s3.info_help"))
 	helpH := lipgloss.Height(helpText)
 
 	overhead := frameH + headerH + helpH + 2
@@ -403,8 +438,8 @@ func (m *ftpSitesModel) renderInfoView() string {
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Top, box)
 }
 
-func (m *ftpSitesModel) reload() {
-	sites, err := ftpconfig.Load()
+func (m *s3SitesModel) reload() {
+	sites, err := s3config.Load()
 	if err != nil {
 		sites = nil
 	}
@@ -413,56 +448,43 @@ func (m *ftpSitesModel) reload() {
 	m.rebuildTable()
 }
 
-func (m *ftpSitesModel) applyFilter() {
-	var base []ftpconfig.FTPSite
-	if m.selectedTag != "" {
+func (m *s3SitesModel) applyFilter() {
+	var base []s3config.S3Site
+	if m.selectedTag == "" {
+		base = m.sites
+	} else {
 		for _, s := range m.sites {
-			if siteHasTag(s, m.selectedTag) {
+			if s3SiteHasTag(s, m.selectedTag) {
 				base = append(base, s)
 			}
 		}
-	} else {
-		base = m.sites
 	}
-	q := strings.ToLower(strings.TrimSpace(m.searchInput.Value()))
+
+	q := strings.TrimSpace(m.searchInput.Value())
 	if q == "" {
 		m.filtered = base
 		return
 	}
-	words := strings.Fields(q)
-	var out []ftpconfig.FTPSite
+	words := strings.Fields(strings.ToLower(q))
+	var out []s3config.S3Site
 	for _, s := range base {
-		hay := strings.ToLower(s.Name + " " + s.Host + " " + s.User + " " + strings.Join(s.Tags, " "))
-		ok := true
+		hay := strings.ToLower(s.Name + " " + s.Endpoint + " " + s.Bucket + " " + s.Region + " " + s.AccessKey + " " + strings.Join(s.Tags, " "))
+		match := true
 		for _, w := range words {
+			w = strings.TrimPrefix(w, "#")
 			if !strings.Contains(hay, w) {
-				ok = false
+				match = false
 				break
 			}
 		}
-		if ok {
+		if match {
 			out = append(out, s)
 		}
 	}
 	m.filtered = out
 }
 
-func (m *ftpSitesModel) tableHeight() int {
-	overhead := 8
-	if m.height >= 18 && m.width >= 64 {
-		overhead++
-	}
-	h := m.height - overhead
-	if h < 5 {
-		h = 5
-	}
-	return h
-}
-
-// plainColumnWidth sizes a column by its longest plain-text value,
-// clamped to [minW, maxW]. Measured without ANSI so bubbles table
-// truncation and padding stay exact.
-func plainColumnWidth(sites []ftpconfig.FTPSite, minW, maxW int, cell func(ftpconfig.FTPSite) string) int {
+func plainS3ColumnWidth(sites []s3config.S3Site, minW, maxW int, cell func(s3config.S3Site) string) int {
 	w := minW
 	for _, s := range sites {
 		if lw := ansi.StringWidth(cell(s)); lw > w {
@@ -475,13 +497,7 @@ func plainColumnWidth(sites []ftpconfig.FTPSite, minW, maxW int, cell func(ftpco
 	return w
 }
 
-// colorizeSiteTags applies per-tag colors to an already-rendered table.
-// Coloring after layout keeps ANSI bytes out of bubbles table width math
-// (runewidth counts escapes as visible cells, which chops text early and
-// can split sequences, breaking borders). A single alternation pass,
-// longest-first with a boundary lookahead, so "#Min" never corrupts
-// "#Minio" and truncated cells ("#Mi…") stay plain.
-func colorizeSiteTags(view string, sites []ftpconfig.FTPSite) string {
+func colorizeS3SiteTags(view string, sites []s3config.S3Site) string {
 	seen := map[string]bool{}
 	var tags []string
 	for _, s := range sites {
@@ -502,88 +518,89 @@ func colorizeSiteTags(view string, sites []ftpconfig.FTPSite) string {
 	for i, t := range tags {
 		quoted[i] = regexp.QuoteMeta(t)
 	}
-	// Boundary (space, box border, or end) is consumed and re-emitted so
-	// adjacent tokens still match; truncated cells ("#Mi…") never match.
 	re := regexp.MustCompile(`#(` + strings.Join(quoted, "|") + `)([\s│]|\z)`)
 	var b strings.Builder
 	prev := 0
-	for _, m := range re.FindAllStringSubmatchIndex(view, -1) {
-		b.WriteString(view[prev:m[0]])
-		b.WriteString(FormatColoredTag(view[m[2]:m[3]]))
-		b.WriteString(view[m[3]:m[1]])
-		prev = m[1]
+	for _, match := range re.FindAllStringSubmatchIndex(view, -1) {
+		b.WriteString(view[prev:match[0]])
+		b.WriteString(FormatColoredTag(view[match[2]:match[3]]))
+		b.WriteString(view[match[3]:match[1]])
+		prev = match[1]
 	}
 	b.WriteString(view[prev:])
 	return b.String()
 }
 
-// siteRows renders the filtered sites for the current column set.
-func (m *ftpSitesModel) siteRows(narrow bool) []table.Row {
+func (m *s3SitesModel) siteRows(narrow bool) []table.Row {
 	rows := make([]table.Row, 0, len(m.filtered))
 	for _, s := range m.filtered {
-		user := s.User
-		if user == "" {
-			user = "anonymous"
-		}
 		displayName := m.siteDisplayName(s)
+		bucket := s.Bucket
+		if bucket == "" {
+			bucket = "-"
+		}
 		if narrow {
 			rows = append(rows, table.Row{
 				displayName,
-				fmt.Sprintf("%s@%s", user, s.Host),
-				fmt.Sprintf("%d", s.Port),
+				s.Endpoint,
 			})
 			continue
 		}
 		rows = append(rows, table.Row{
 			displayName,
-			fmt.Sprintf("%s@%s", user, s.Host),
-			fmt.Sprintf("%d", s.Port),
+			s.Endpoint,
+			bucket,
 			FormatPlainTags(s.Tags),
 		})
 	}
 	return rows
 }
 
-func (m *ftpSitesModel) rebuildTable() {
+func (m *s3SitesModel) tableHeight() int {
+	overhead := 8
+	if m.height >= 18 && m.width >= 64 {
+		overhead++
+	}
+	if m.selectedTag != "" {
+		overhead++
+	}
+	if m.statusActive() {
+		overhead++
+	}
+	h := m.height - overhead
+	if h < 5 {
+		h = 5
+	}
+	return h
+}
+
+func (m *s3SitesModel) rebuildTable() {
 	w := m.width
 	if w <= 0 {
 		w = 80
 	}
 	h := m.tableHeight()
-	// Bubbles table renders each cell with Padding(0,1) = 2 extra cols per
-	// cell; TableFocused adds border(2); App adds padding(2). So
-	// rendered = colWidths + numCols*2 + 4, same convention as the serial and
-	// telnet getColumns. Budget the column widths to fill the terminal exactly.
-	portW := 6
-	if w < 40 {
-		portW = 4
-	}
+
 	if w < 74 {
-		// Narrow terminals: drop the Tags column, keep Name/User@Host/Port.
-		rem := w - 4 - 3*2 - portW
+		rem := w - 4 - 2*2
 		if rem < 6 {
 			rem = 6
 		}
-		hostW := rem * 2 / 5
-		if hostW < 3 {
-			hostW = 3
-		}
-		nameW := rem - hostW
+		nameW := rem * 2 / 5
 		if nameW < 3 {
 			nameW = 3
 		}
+		endpointW := rem - nameW
+		if endpointW < 3 {
+			endpointW = 3
+		}
 		cols := []table.Column{
 			{Title: i18n.T("table.col.name"), Width: nameW},
-			{Title: i18n.T("table.col.user") + "@" + i18n.T("table.col.hostname"), Width: hostW},
-			{Title: i18n.T("table.col.port"), Width: portW},
+			{Title: "Endpoint", Width: endpointW},
 		}
 		if m.table.Columns() == nil || len(m.table.Columns()) == 0 {
 			m.table = table.New(table.WithColumns(cols), table.WithHeight(h), table.WithFocused(true))
 		} else {
-			// Drain rows first: bubbles renderRow indexes columns by row
-			// length, so swapping 3/4-column layouts on a populated
-			// table panics. SetRows(nil) renders nothing, making the
-			// column swap safe in both directions.
 			m.table.SetRows(nil)
 			m.table.SetColumns(cols)
 			m.table.SetHeight(h)
@@ -592,32 +609,31 @@ func (m *ftpSitesModel) rebuildTable() {
 		m.clampTableCursor()
 		return
 	}
-	rem := w - 4 - 4*2 - portW
-	if rem < 12 {
-		rem = 12
+
+	rem := w - 4 - 4*2
+	if rem < 20 {
+		rem = 20
 	}
-	// Content-based widths (SSH-style): short values don't starve Tags.
-	nameW := plainColumnWidth(m.filtered, 15, 31, func(s ftpconfig.FTPSite) string { return "[ ] ⚫ " + s.Name })
-	hostW := plainColumnWidth(m.filtered, 12, 32, func(s ftpconfig.FTPSite) string {
-		user := s.User
-		if user == "" {
-			user = "anonymous"
-		}
-		return user + "@" + s.Host
-	})
-	tagsW := rem - nameW - hostW
+	nameW := plainS3ColumnWidth(m.filtered, 15, 28, func(s s3config.S3Site) string { return "[ ] ⚫ " + s.Name })
+	endpointW := plainS3ColumnWidth(m.filtered, 18, 36, func(s s3config.S3Site) string { return s.Endpoint })
+	bucketW := plainS3ColumnWidth(m.filtered, 10, 20, func(s s3config.S3Site) string { return s.Bucket })
+	tagsW := rem - nameW - endpointW - bucketW
 	if tagsW < 8 {
 		tagsW = 8
-		hostW = rem - nameW - tagsW
-		if hostW < 12 {
-			hostW = 12
-			nameW = rem - hostW - tagsW
+		endpointW = rem - nameW - bucketW - tagsW
+		if endpointW < 12 {
+			endpointW = 12
+			nameW = rem - endpointW - bucketW - tagsW
+			if nameW < 10 {
+				nameW = 10
+			}
 		}
 	}
+
 	cols := []table.Column{
 		{Title: i18n.T("table.col.name"), Width: nameW},
-		{Title: i18n.T("table.col.user") + "@" + i18n.T("table.col.hostname"), Width: hostW},
-		{Title: i18n.T("table.col.port"), Width: portW},
+		{Title: "Endpoint", Width: endpointW},
+		{Title: i18n.T("s3.field_bucket"), Width: bucketW},
 		{Title: i18n.T("table.col.tags"), Width: tagsW},
 	}
 	if m.table.Columns() == nil || len(m.table.Columns()) == 0 {
@@ -631,7 +647,7 @@ func (m *ftpSitesModel) rebuildTable() {
 	m.clampTableCursor()
 }
 
-func (m *ftpSitesModel) clampTableCursor() {
+func (m *s3SitesModel) clampTableCursor() {
 	count := len(m.filtered)
 	if count == 0 || (m.table.Cursor() >= 0 && m.table.Cursor() < count) {
 		return
@@ -639,7 +655,7 @@ func (m *ftpSitesModel) clampTableCursor() {
 	m.table.SetCursor(0)
 }
 
-func (m *ftpSitesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *s3SitesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -649,13 +665,14 @@ func (m *ftpSitesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.rebuildTable()
 		if m.addForm != nil {
 			updated, cmd := m.addForm.Update(msg)
-			if fm, ok := updated.(*ftpAddFormModel); ok {
+			if fm, ok := updated.(*s3AddFormModel); ok {
 				m.addForm = fm
 			}
 			return m, cmd
 		}
 		return m, nil
-	case ftpProbeMsg:
+
+	case s3ProbeMsg:
 		if m.probeStatus == nil {
 			m.probeStatus = make(map[string]bool)
 		}
@@ -666,20 +683,10 @@ func (m *ftpSitesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.latencies[msg.name] = msg.duration
 		if len(m.probeStatus) >= len(m.sites) {
 			m.probing = false
-		} else if len(m.selectedSites) > 0 {
-			done := true
-			for name := range m.selectedSites {
-				if _, ok := m.probeStatus[name]; !ok {
-					done = false
-					break
-				}
-			}
-			if done {
-				m.probing = false
-			}
 		}
 		m.rebuildTable()
 		return m, nil
+
 	case tea.KeyMsg:
 		if m.addMode || m.editMode {
 			return m.handleAddKeys(msg)
@@ -718,60 +725,145 @@ func (m *ftpSitesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			case "down", "j":
-				tagItems := m.getTagCounts()
-				if m.tagPickerCursor < len(tagItems) {
+				tagCount := len(m.getTagCounts())
+				if m.tagPickerCursor < tagCount {
 					m.tagPickerCursor++
 				}
 				return m, nil
-			case "c":
-				m.selectedTag = ""
-				m.tagPickerOpen = false
-				m.applyFilter()
-				m.rebuildTable()
-				m.setStatus(i18n.T("tags.cleared"))
-				return m, nil
-			case "enter":
+			case "enter", " ":
 				tagItems := m.getTagCounts()
 				if m.tagPickerCursor == 0 {
 					m.selectedTag = ""
+					m.setStatus(i18n.T("tags.cleared"))
 				} else if m.tagPickerCursor-1 < len(tagItems) {
-					m.selectedTag = tagItems[m.tagPickerCursor-1].tag
+					chosen := tagItems[m.tagPickerCursor-1].tag
+					m.selectedTag = chosen
+					m.setStatus(fmt.Sprintf(i18n.T("tags.filtered"), "#"+chosen))
 				}
 				m.tagPickerOpen = false
 				m.applyFilter()
 				m.rebuildTable()
 				return m, nil
-			case "1", "2", "3", "4", "5", "6", "7", "8", "9":
-				tagItems := m.getTagCounts()
-				idx := int(msg.String()[0] - '1')
-				if idx < len(tagItems) {
-					m.selectedTag = tagItems[idx].tag
-					m.tagPickerOpen = false
-					m.applyFilter()
-					m.rebuildTable()
-					return m, nil
-				}
 			}
 			return m, nil
 		}
 		if m.searchMode {
-			return m.handleSearch(msg)
+			return m.handleSearchKeys(msg)
 		}
-		return m.handleListKeys(msg)
+		return m.handleNormalKeys(msg)
 	}
-	var cmd tea.Cmd
-	m.table, cmd = m.table.Update(msg)
+	return m, nil
+}
+
+func (m *s3SitesModel) handleAddKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.addForm == nil {
+		m.addMode = false
+		m.editMode = false
+		return m, nil
+	}
+	updated, cmd := m.addForm.Update(msg)
+	if fm, ok := updated.(*s3AddFormModel); ok {
+		m.addForm = fm
+	}
+	if m.addForm.cancelled {
+		m.addForm = nil
+		m.addMode = false
+		m.editMode = false
+		return m, nil
+	}
+	if m.addForm.done {
+		m.addForm = nil
+		m.addMode = false
+		m.editMode = false
+		m.reload()
+		return m, nil
+	}
 	return m, cmd
 }
 
-func (m *ftpSitesModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *s3SitesModel) handleDeleteConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "y", "Y", "enter":
+		sel := m.getSelectedSites()
+		if len(sel) > 0 {
+			deleted := 0
+			for _, s := range sel {
+				if err := s3config.Delete(s.Name); err == nil {
+					_ = s3cred.DeleteSecretKey(s.Name)
+					deleted++
+				}
+			}
+			m.clearSelection()
+			m.confirmDel = false
+			m.deleteIdx = -1
+			m.reload()
+			m.setStatus(fmt.Sprintf(i18n.T("s3.delete_batch_success"), deleted))
+			return m, nil
+		}
+		if m.deleteIdx >= 0 && m.deleteIdx < len(m.filtered) {
+			target := m.filtered[m.deleteIdx]
+			if err := s3config.Delete(target.Name); err != nil {
+				m.setStatus(fmt.Sprintf(i18n.T("s3.delete_failed"), err.Error()))
+			} else {
+				_ = s3cred.DeleteSecretKey(target.Name)
+				m.setStatus(fmt.Sprintf(i18n.T("s3.delete_success"), target.Name))
+			}
+			m.confirmDel = false
+			m.deleteIdx = -1
+			m.reload()
+			return m, nil
+		}
+		m.confirmDel = false
+		m.deleteIdx = -1
+		return m, nil
+	case "n", "N", "esc", "q":
+		m.confirmDel = false
+		m.deleteIdx = -1
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m *s3SitesModel) handleSearchKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.searchMode = false
+		m.searchInput.Blur()
+		m.searchInput.SetValue("")
+		m.applyFilter()
+		m.rebuildTable()
+		m.table.Focus()
+		return m, nil
+	case "enter", "tab":
+		m.searchMode = false
+		m.searchInput.Blur()
+		m.table.Focus()
+		return m, nil
+	default:
+		var cmd tea.Cmd
+		m.searchInput, cmd = m.searchInput.Update(msg)
+		m.applyFilter()
+		m.rebuildTable()
+		return m, cmd
+	}
+}
+
+func (m *s3SitesModel) startEdit(site s3config.S3Site) {
+	m.editMode = true
+	m.editOldName = site.Name
+	s := site
+	m.addForm = newS3AddForm(m.styles, m.width, m.height, &s)
+}
+
+func (m *s3SitesModel) handleNormalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 	switch key {
-	case "esc", "q", "ctrl+c":
+	case "q", "ctrl+c":
+		return m, func() tea.Msg { return s3SitesDoneMsg{} }
+	case "esc":
 		if len(m.selectedSites) > 0 {
 			m.clearSelection()
 			m.rebuildTable()
-			m.setStatus(i18n.T("main.selection_cleared"))
 			return m, nil
 		}
 		if m.selectedTag != "" {
@@ -781,19 +873,19 @@ func (m *ftpSitesModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.setStatus(i18n.T("tags.cleared"))
 			return m, nil
 		}
-		return m, func() tea.Msg { return ftpDoneMsg{} }
+		return m, func() tea.Msg { return s3SitesDoneMsg{} }
 	case "t":
 		return m, func() tea.Msg { return switchProtocolMsg{target: ViewSerial} }
 	case "T":
 		return m, func() tea.Msg { return switchProtocolMsg{target: ViewTelnet} }
-	case "W", "]":
+	case "F":
+		return m, func() tea.Msg { return switchProtocolMsg{target: ViewFTP} }
+	case "W":
 		return m, func() tea.Msg { return switchProtocolMsg{target: ViewWebDAV} }
-	case "O":
-		return m, func() tea.Msg { return switchProtocolMsg{target: ViewS3} }
-	case "b":
+	case "b", "]":
 		return m, func() tea.Msg { return switchProtocolMsg{target: ViewLocalBrowser} }
 	case "[":
-		return m, func() tea.Msg { return switchProtocolMsg{target: ViewTelnet} }
+		return m, func() tea.Msg { return switchProtocolMsg{target: ViewWebDAV} }
 	case "g", "home":
 		m.table.SetCursor(0)
 		return m, nil
@@ -835,13 +927,8 @@ func (m *ftpSitesModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		name := m.filtered[idx].Name
-		return m, func() tea.Msg { return ftpOpenBrowserMsg{siteName: name} }
-	case "/", "ctrl+f":
-		m.searchMode = true
-		m.table.Blur()
-		m.searchInput.Focus()
-		return m, textinput.Blink
-	case "tab":
+		return m, func() tea.Msg { return s3OpenBrowserMsg{siteName: name} }
+	case "/", "ctrl+f", "tab":
 		m.searchMode = true
 		m.table.Blur()
 		m.searchInput.Focus()
@@ -854,12 +941,6 @@ func (m *ftpSitesModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.tagPickerOpen = true
 		m.tagPickerCursor = 0
-		for i, it := range tagItems {
-			if it.tag == m.selectedTag {
-				m.tagPickerCursor = i + 1
-				break
-			}
-		}
 		return m, nil
 	case "c":
 		if m.selectedTag != "" {
@@ -867,191 +948,80 @@ func (m *ftpSitesModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.applyFilter()
 			m.rebuildTable()
 			m.setStatus(i18n.T("tags.cleared"))
-			return m, nil
 		}
 		return m, nil
 	case "a":
-		m.startAdd()
-		return m, nil
+		m.addMode = true
+		m.addForm = newS3AddForm(m.styles, m.width, m.height, nil)
+		return m, m.addForm.Init()
 	case "e":
 		if len(m.filtered) == 0 {
 			return m, nil
 		}
 		idx := m.table.Cursor()
-		if idx < 0 || idx >= len(m.filtered) {
-			return m, nil
+		if idx >= 0 && idx < len(m.filtered) {
+			m.startEdit(m.filtered[idx])
+			return m, m.addForm.Init()
 		}
-		m.startEdit(m.filtered[idx])
 		return m, nil
-	case "d", "x":
-		if len(m.selectedSites) > 0 {
-			m.deleteIdx = m.table.Cursor()
+	case "d":
+		sel := m.getSelectedSites()
+		if len(sel) > 0 {
 			m.confirmDel = true
-			return m, nil
-		}
-		if len(m.filtered) == 0 {
-			return m, nil
-		}
-		m.deleteIdx = m.table.Cursor()
-		m.confirmDel = true
-		return m, nil
-	case "y":
-		if len(m.selectedSites) > 0 {
-			var cmds []string
-			for _, s := range m.getSelectedSites() {
-				cmds = append(cmds, FormatFTPCommand(s))
-			}
-			joined := strings.Join(cmds, "\n")
-			copyToClipboard(joined)
-			m.setStatus(fmt.Sprintf(i18n.T("main.copied"), fmt.Sprintf("%d sites", len(cmds))))
+			m.deleteIdx = -1
 			return m, nil
 		}
 		if len(m.filtered) == 0 {
 			return m, nil
 		}
 		idx := m.table.Cursor()
-		if idx < 0 || idx >= len(m.filtered) {
-			return m, nil
+		if idx >= 0 && idx < len(m.filtered) {
+			m.deleteIdx = idx
+			m.confirmDel = true
 		}
-		cmdStr := FormatFTPCommand(m.filtered[idx])
-		copyToClipboard(cmdStr)
-		m.setStatus(fmt.Sprintf(i18n.T("main.copied"), cmdStr))
 		return m, nil
-	case "p":
-		if m.probing {
-			return m, nil
-		}
-		if len(m.selectedSites) > 0 {
-			m.probing = true
-			m.probeStatus = make(map[string]bool)
-			m.latencies = make(map[string]time.Duration)
-			m.rebuildTable()
-			m.setStatus(fmt.Sprintf(i18n.T("main.ping_selected"), len(m.selectedSites)))
-			return m, m.startProbeSelectedCmd()
-		}
-		if len(m.sites) == 0 {
-			return m, nil
-		}
-		m.probing = true
-		m.probeStatus = make(map[string]bool)
-		m.latencies = make(map[string]time.Duration)
-		m.rebuildTable()
-		m.setStatus("Probing all sites...")
-		return m, m.startProbeAllCmd()
 	case "i":
 		if len(m.filtered) == 0 {
 			return m, nil
 		}
 		idx := m.table.Cursor()
-		if idx < 0 || idx >= len(m.filtered) {
+		if idx >= 0 && idx < len(m.filtered) {
+			s := m.filtered[idx]
+			m.infoSite = &s
+			m.showInfo = true
+			m.infoScroll = 0
+		}
+		return m, nil
+	case "y":
+		if len(m.filtered) == 0 {
 			return m, nil
 		}
-		site := m.filtered[idx]
-		m.infoSite = &site
-		m.showInfo = true
-		m.infoScroll = 0
+		idx := m.table.Cursor()
+		if idx >= 0 && idx < len(m.filtered) {
+			u := m.filtered[idx].Endpoint
+			if err := clipboard.WriteAll(u); err == nil {
+				m.setStatus(i18n.T("main.copied") + ": " + u)
+			}
+		}
 		return m, nil
+	case "p":
+		m.probing = true
+		m.setStatus("Probing S3 sites...")
+		return m, m.startProbeSelectedCmd()
 	case "r":
 		m.reload()
+		m.setStatus(i18n.T("s3.refreshed"))
 		return m, nil
-	default:
-		var cmd tea.Cmd
-		m.table, cmd = m.table.Update(msg)
-		return m, cmd
+	case "?", "h":
+		return m, func() tea.Msg { return s3ShowHelpMsg{} }
 	}
-}
 
-func (m *ftpSitesModel) handleSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		m.searchMode = false
-		m.searchInput.Blur()
-		m.table.Focus()
-		return m, nil
-	case "enter", "tab":
-		m.searchMode = false
-		m.searchInput.Blur()
-		m.table.Focus()
-		return m, nil
-	}
 	var cmd tea.Cmd
-	oldValue := m.searchInput.Value()
-	m.searchInput, cmd = m.searchInput.Update(msg)
-	if m.searchInput.Value() != oldValue {
-		m.applyFilter()
-		m.rebuildTable()
-	}
+	m.table, cmd = m.table.Update(msg)
 	return m, cmd
 }
 
-func (m *ftpSitesModel) handleDeleteConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "y", "Y", "enter":
-		if len(m.selectedSites) > 0 {
-			for name := range m.selectedSites {
-				_ = ftpconfig.Delete(name)
-				_ = ftpcred.DeletePassword(name)
-			}
-			m.clearSelection()
-			m.reload()
-		} else if m.deleteIdx >= 0 && m.deleteIdx < len(m.filtered) {
-			name := m.filtered[m.deleteIdx].Name
-			_ = ftpconfig.Delete(name)
-			_ = ftpcred.DeletePassword(name)
-			m.reload()
-		}
-		m.confirmDel = false
-		return m, nil
-	case "n", "N", "esc":
-		m.confirmDel = false
-		return m, nil
-	}
-	return m, nil
-}
-
-func (m *ftpSitesModel) startAdd() {
-	m.addForm = newFTPAddForm(m.styles, m.width, m.height, nil)
-	m.addMode = true
-	m.editMode = false
-	m.editOldName = ""
-}
-
-func (m *ftpSitesModel) startEdit(site ftpconfig.FTPSite) {
-	m.addForm = newFTPAddForm(m.styles, m.width, m.height, &site)
-	m.addMode = false
-	m.editMode = true
-	m.editOldName = site.Name
-}
-
-func (m *ftpSitesModel) handleAddKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if m.addForm == nil {
-		m.addMode = false
-		m.editMode = false
-		return m, nil
-	}
-	sub, cmd := m.addForm.Update(msg)
-	if fm, ok := sub.(*ftpAddFormModel); ok {
-		m.addForm = fm
-	}
-	if m.addForm.done {
-		m.addMode = false
-		m.editMode = false
-		m.editOldName = ""
-		m.addForm = nil
-		m.reload()
-		return m, nil
-	}
-	if m.addForm.cancelled {
-		m.addMode = false
-		m.editMode = false
-		m.editOldName = ""
-		m.addForm = nil
-		return m, nil
-	}
-	return m, cmd
-}
-
-func (m *ftpSitesModel) View() string {
+func (m *s3SitesModel) View() string {
 	if m.showInfo && m.infoSite != nil {
 		return m.renderInfoView()
 	}
@@ -1059,11 +1029,13 @@ func (m *ftpSitesModel) View() string {
 		return m.addForm.View()
 	}
 
+	m.table.SetHeight(m.tableHeight())
+
 	var components []string
-	components = append(components, m.styles.Header.Render(" "+i18n.T("ftp.sites_title")+" "))
+	components = append(components, m.styles.Header.Render(" "+i18n.T("s3.sites_title")+" "))
 
 	if m.height >= 18 {
-		if tabs := renderProtocolTabs(m.styles, "ftp", len(m.filtered), m.width); tabs != "" {
+		if tabs := renderProtocolTabs(m.styles, "s3", len(m.filtered), m.width); tabs != "" {
 			components = append(components, tabs)
 		}
 	}
@@ -1113,14 +1085,11 @@ func (m *ftpSitesModel) View() string {
 	if m.searchMode {
 		tableStyle = m.styles.TableUnfocused
 	}
-	components = append(components, colorizeSiteTags(tableStyle.Render(m.table.View()), m.filtered))
+	components = append(components, colorizeS3SiteTags(tableStyle.Render(m.table.View()), m.filtered))
 	if m.statusActive() {
 		components = append(components, renderStatusToast(m.statusMessage))
 	}
-	helpKey := "ftp.sites_help"
-	if len(m.selectedSites) > 0 {
-		helpKey = "ftp.sites_help"
-	}
+	helpKey := "s3.sites_help"
 	components = append(components, renderHelpText(m.styles, i18n.T(helpKey), m.width))
 	base := m.styles.App.Render(lipgloss.JoinVertical(lipgloss.Left, components...))
 	if m.tagPickerOpen {
@@ -1130,7 +1099,7 @@ func (m *ftpSitesModel) View() string {
 		if len(m.selectedSites) > 0 {
 			box := renderConfirmBox(m.styles, m.width,
 				m.styles.ErrorText.Render(i18n.T("delete.title")),
-				i18n.T("ftp.sites_delete_batch_confirm", len(m.selectedSites)),
+				fmt.Sprintf(i18n.T("s3.sites_delete_batch_confirm"), len(m.selectedSites)),
 				i18n.T("delete.warning"),
 				m.styles.HelpText.Render(i18n.T("delete.help")),
 			)
@@ -1140,7 +1109,7 @@ func (m *ftpSitesModel) View() string {
 			name := m.filtered[m.deleteIdx].Name
 			box := renderConfirmBox(m.styles, m.width,
 				m.styles.ErrorText.Render(i18n.T("delete.title")),
-				i18n.T("ftp.sites_delete_confirm", name),
+				fmt.Sprintf(i18n.T("s3.sites_delete_confirm"), name),
 				i18n.T("delete.warning"),
 				m.styles.HelpText.Render(i18n.T("delete.help")),
 			)

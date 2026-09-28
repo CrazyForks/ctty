@@ -285,3 +285,33 @@ func RunWebDAVBrowserMode(siteName, currentVersion string, noUpdateCheck bool) e
 	}
 	return nil
 }
+
+// RunS3Mode starts the TUI directly in the S3 site manager view.
+func RunS3Mode(currentVersion string, noUpdateCheck bool) error {
+	m := NewModel(nil, "", false, currentVersion, noUpdateCheck)
+	m.s3SitesForm = NewS3SitesForm(m.styles, m.width, m.height)
+	m.viewMode = ViewS3
+	m.s3Only = true
+
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	_, err := p.Run()
+	if err != nil {
+		return fmt.Errorf("error running S3 mode: %w", err)
+	}
+	return nil
+}
+
+// RunS3BrowserMode opens the S3 browser for a saved site.
+func RunS3BrowserMode(siteName, currentVersion string, noUpdateCheck bool) error {
+	m := NewModel(nil, "", false, currentVersion, noUpdateCheck)
+	m.s3Form = NewS3FormWithLayout(m.styles, m.width, m.height, siteName, m.appConfig.S3Layout)
+	m.viewMode = ViewS3Browse
+	m.s3Only = true
+
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	_, err := p.Run()
+	if err != nil {
+		return fmt.Errorf("error running S3 browser: %w", err)
+	}
+	return nil
+}

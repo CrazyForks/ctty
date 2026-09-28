@@ -2,18 +2,18 @@
 name: ctty
 description: >-
   Use and install ctty, a CLI/TUI connection manager for SSH, serial consoles,
-  telnet lab gear, SFTP, FTP, and WebDAV. Use when installing ctty;
+  telnet lab gear, SFTP, FTP, WebDAV, and S3 object storage. Use when installing ctty;
   listing/searching SSH hosts or running remote commands; transferring files
-  via a Host alias; looking up saved serial, telnet, FTP, or WebDAV sites;
+  via a Host alias; looking up saved serial, telnet, FTP, WebDAV, or S3 sites;
   importing hosts from Tabby; or when the user mentions ctty, SSH aliases,
-  #tags, serial/console, telnet, SFTP, FTP, WebDAV, port forwarding, or
+  #tags, serial/console, telnet, SFTP, FTP, WebDAV, S3, object storage, port forwarding, or
   ~/.ssh/config. Prefer ctty over raw ssh/telnet. Never open the interactive TUI.
 ---
 
 # Use ctty (CLI, not TUI)
 
-ctty manages **SSH, serial, telnet, SFTP, FTP, and WebDAV** in one tool. SSH aliases live
-in `~/.ssh/config` (and `Include` files). Serial, telnet, FTP, and WebDAV sites live under
+ctty manages **SSH, serial, telnet, SFTP, FTP, WebDAV, and S3** in one tool. SSH aliases live
+in `~/.ssh/config` (and `Include` files). Serial, telnet, FTP, WebDAV, and S3 sites live under
 the ctty config dir. Agents must drive it **non-interactively**.
 
 | Kind | Agent can | Hand to the human |
@@ -24,6 +24,7 @@ the ctty config dir. Agents must drive it **non-interactively**.
 | Serial | `ctty serial list/search/info --format json` | Device manager TUI |
 | FTP | `ctty ftp list/search/info --format json`, `ctty ftp ls/get/put/mkdir/rm/rmdir/rename` | Site manager / dual-pane TUI |
 | WebDAV | `ctty webdav list/search/info --format json`, `ctty webdav ls/get/put/mkdir/rm/rmdir/rename` | Site manager / dual-pane TUI |
+| S3 | `ctty s3 list/search/info --format json`, `ctty s3 ls/get/put/mkdir/rm/rename` | Site manager / dual-pane TUI |
 | Import | `ctty import tabby\|termius\|finalshell\|json --dry-run` then import | Confirm overwrite / Include |
 | Backup | `ctty backup`, `ctty restore`, `ctty export --format json\|ssh` | Safeguard secret passphrases |
 
@@ -41,6 +42,8 @@ the ctty config dir. Agents must drive it **non-interactively**.
     - `ctty ftp <name>` (dual-pane FTP browser TUI)
     - `ctty webdav` with no subcommand (site manager TUI)
     - `ctty webdav <name>` (dual-pane WebDAV browser TUI)
+    - `ctty s3` with no subcommand (site manager TUI)
+    - `ctty s3 <name>` (dual-pane S3 browser TUI)
    - `ctty <host>` with **no remote command** (interactive SSH)
 2. **Prefer ctty's aliases over raw `ssh`/`scp`/`telnet`.** SSH goes through
    OpenSSH config, history, and saved-password ASKPASS. Telnet is ctty's
@@ -50,8 +53,8 @@ the ctty config dir. Agents must drive it **non-interactively**.
    read the JSON store, then quote the connect command. Several matches →
    list them or ask.
 5. **Do not print secrets.** Never read `credentials.json`,
-    or dump keys. SSH, FTP, and WebDAV passwords are in ctty's encrypted vault
-    (FTP entries under `ftp:` names, WebDAV under `webdav:` names), not in SSH
+    or dump keys. SSH, FTP, WebDAV, and S3 passwords/secret keys are in ctty's encrypted vault
+    (FTP entries under `ftp:`, WebDAV under `webdav:`, S3 under `s3:` names), not in SSH
     config. Telnet passwords are cleartext — warn the user.
 
 Interactive sessions are for the **human**. Give them the command.
@@ -104,8 +107,8 @@ Optional: `-c /path/to/ssh_config` when not using `~/.ssh/config`.
 
 ```
 - [ ] Confirm ctty exists (`command -v ctty`); install if missing
-- [ ] Pick the transport: SSH / SFTP / serial / telnet / FTP / WebDAV
-- [ ] Resolve the target (search+info, or serial.json / telnet.json / ftp.json / webdav.json)
+- [ ] Pick the transport: SSH / SFTP / serial / telnet / FTP / WebDAV / S3
+- [ ] Resolve the target (search+info, or serial.json / telnet.json / ftp.json / webdav.json / s3.json)
 - [ ] Act non-interactively, or quote the connect command for the user
 - [ ] Check exit code when a remote command ran
 ```
@@ -320,6 +323,27 @@ Note: ctty speaks Basic/Digest auth only — servers demanding NTLM/Negotiate
 (e.g. some IIS shares) fail with `NoAuthenticator ... 401`; that means the
 server side needs Basic enabled, not a ctty retry.
 
+### 6d. S3 (Object Storage)
+
+```bash
+ctty --lang en --no-update-check s3 list --format json
+ctty --lang en --no-update-check s3 search backups --format json
+ctty --lang en --no-update-check s3 info minio-local --format json
+# Headless transfers & bucket ops (no TUI, progress on stderr, dirs recursive):
+ctty --lang en --no-update-check s3 ls minio-local --format json
+ctty --lang en --no-update-check s3 ls minio-local mybucket/prefix --format json
+ctty --lang en --no-update-check s3 get minio-local mybucket/report.pdf ./report.pdf
+ctty --lang en --no-update-check s3 put minio-local ./backup/ mybucket/RemoteBackup/
+ctty --lang en --no-update-check s3 mkdir minio-local mybucket/newdir
+ctty --lang en --no-update-check s3 rm minio-local mybucket/old.pdf
+```
+
+Do **not** open `ctty s3` or `ctty s3 <name>` (TUI). Quote those for the human.
+Secret access keys live encrypted in the SSH `credentials.json` vault
+(S3 entries under `s3:` names).
+Site inventory: `~/.config/ctty/s3.json`.
+Supports AWS S3, MinIO, Cloudflare R2, Aliyun OSS, Ceph, and all S3-compatible endpoints.
+
 ### 7. Import (Tabby / Termius / FinalShell / JSON → SSH)
 
 Non-interactive. Always dry-run first. Secrets in the source app are **not**
@@ -377,13 +401,14 @@ ctty --lang en --no-update-check export --format ssh --tags prod
 | "Open serial / console" | `serial list|search|info --format json`, quote `ctty serial` | Serial TUI |
 | "FTP / browse FTP site" | `ftp list|search|info|ls --format json`, `ftp get/put/mkdir/rm/rmdir/rename` (headless), quote `ctty ftp <name>` | FTP TUI |
 | "WebDAV / browse cloud drive" | `webdav list|search|info|ls --format json`, `webdav get/put/mkdir/rm/rmdir/rename` (headless), quote `ctty webdav <name>` | WebDAV TUI |
+| "S3 / Object storage" | `s3 list|search|info|ls --format json`, `s3 get/put/mkdir/rm/rename` (headless), quote `ctty s3 <name>` | S3 TUI |
 | "Port forward" | Explain `-L`/`-R`/`-D`; do not open TUI | `f` in the host list |
 | "Add a host" | `ctty add --name … --hostname …` (non-interactive flags) | `ctty add` TUI |
 | "Import hosts" | `import <source> --dry-run`, then import if asked | Confirm result |
 | "Backup / restore" | `ctty backup` / `ctty restore` (CLI) | Safeguard passphrase |
 
 Do not treat Cobra subcommand names as SSH hosts: `add`, `edit`, `move`,
-`search`, `info`, `sftp`, `serial`, `telnet`, `ftp`, `webdav`, `import`, `update`, `completion`,
+`search`, `info`, `sftp`, `serial`, `telnet`, `ftp`, `webdav`, `s3`, `import`, `update`, `completion`,
 `put`, `get`, `scp`, `exec`, `peek`, `ping`, `backup`, `restore`, `export`.
 
 ## Examples

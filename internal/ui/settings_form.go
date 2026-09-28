@@ -32,6 +32,7 @@ type settingsFormModel struct {
 	ftpLayoutVal    string
 	sftpLayoutVal   string
 	webdavLayoutVal string
+	s3LayoutVal     string
 	confirmSave     bool
 
 	prevTheme string
@@ -62,6 +63,7 @@ func NewSettingsForm(styles Styles, width, height int, appConfig *config.AppConf
 	ftpLayoutVal := string(config.NormalizeFTPLayout(cfg.FTPLayout))
 	sftpLayoutVal := string(config.NormalizeSFTPLayout(cfg.SFTPLayout))
 	webdavLayoutVal := string(config.NormalizeWebDAVLayout(cfg.WebDAVLayout))
+	s3LayoutVal := string(config.NormalizeS3Layout(cfg.S3Layout))
 
 	m := &settingsFormModel{
 		styles:          styles,
@@ -75,6 +77,7 @@ func NewSettingsForm(styles Styles, width, height int, appConfig *config.AppConf
 		ftpLayoutVal:    ftpLayoutVal,
 		sftpLayoutVal:   sftpLayoutVal,
 		webdavLayoutVal: webdavLayoutVal,
+		s3LayoutVal:     s3LayoutVal,
 		confirmSave:     true,
 		prevTheme:       themeVal,
 	}
@@ -165,6 +168,16 @@ func (m *settingsFormModel) buildForm() {
 					huh.NewOption(i18n.T("webdav.layout_single"), "single"),
 				).
 				Value(&m.webdavLayoutVal),
+
+			huh.NewSelect[string]().
+				Key("s3").
+				Title(i18n.T("settings.s3_layout_label")).
+				Inline(true).
+				Options(
+					huh.NewOption(i18n.T("s3.layout_dual"), "dual"),
+					huh.NewOption(i18n.T("s3.layout_single"), "single"),
+				).
+				Value(&m.s3LayoutVal),
 
 			huh.NewConfirm().
 				Key("save").
@@ -310,6 +323,7 @@ func (m *settingsFormModel) saveSettings() tea.Cmd {
 		m.appConfig.FTPLayout = config.FTPLayout(m.ftpLayoutVal)
 		m.appConfig.SFTPLayout = config.SFTPLayout(m.sftpLayoutVal)
 		m.appConfig.WebDAVLayout = config.WebDAVLayout(m.webdavLayoutVal)
+		m.appConfig.S3Layout = config.S3Layout(m.s3LayoutVal)
 
 		_ = config.SaveAppConfig(&m.appConfig)
 		i18n.Init(m.appConfig.Language)
