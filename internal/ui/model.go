@@ -63,6 +63,8 @@ const (
 	ViewFTPBrowse
 	ViewWebDAV
 	ViewWebDAVBrowse
+	ViewS3
+	ViewS3Browse
 	ViewLocalBrowser
 )
 
@@ -127,6 +129,7 @@ type Model struct {
 	infoForm         *infoFormModel
 	portForwardForm  *portForwardModel
 	helpForm         *helpModel
+	helpPrevView     ViewMode
 	fileSelectorForm *fileSelectorModel
 	serialForm       *serialFormModel
 	telnetForm       *telnetFormModel
@@ -135,6 +138,8 @@ type Model struct {
 	ftpForm          *ftpFormModel
 	webdavSitesForm  *webdavSitesModel
 	webdavForm       *webdavFormModel
+	s3SitesForm      *s3SitesModel
+	s3Form           *s3FormModel
 	localBrowserForm *localBrowserModel
 	settingsForm     *settingsFormModel
 	snippetForm      *snippetFormModel
@@ -151,6 +156,8 @@ type Model struct {
 	ftpFromSites    bool // browser opened from site manager (Esc returns to list)
 	webdavOnly      bool // true when launched via 'ctty webdav'
 	webdavFromSites bool // browser opened from site manager (Esc returns to list)
+	s3Only          bool // true when launched via 'ctty s3'
+	s3FromSites     bool // browser opened from site manager (Esc returns to list)
 
 	// Error handling
 	errorMessage string

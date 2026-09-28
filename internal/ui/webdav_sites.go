@@ -847,7 +847,9 @@ func (m *webdavSitesModel) handleNormalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 		return m, func() tea.Msg { return switchProtocolMsg{target: ViewTelnet} }
 	case "F":
 		return m, func() tea.Msg { return switchProtocolMsg{target: ViewFTP} }
-	case "b", "]":
+	case "O", "]":
+		return m, func() tea.Msg { return switchProtocolMsg{target: ViewS3} }
+	case "b":
 		return m, func() tea.Msg { return switchProtocolMsg{target: ViewLocalBrowser} }
 	case "[":
 		return m, func() tea.Msg { return switchProtocolMsg{target: ViewFTP} }

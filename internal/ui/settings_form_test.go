@@ -130,7 +130,7 @@ func TestSettingsFormNavigation(t *testing.T) {
 	f := NewSettingsForm(NewStyles(80), 80, 24, &config.AppConfig{})
 	f.Init()
 
-	expectedKeys := []string{"lang", "theme", "update", "esc", "ftp", "sftp", "webdav", "save"}
+	expectedKeys := []string{"lang", "theme", "update", "esc", "ftp", "sftp", "webdav", "s3", "save"}
 
 	// Check initial field
 	if f.form.GetFocusedField().GetKey() != expectedKeys[0] {
@@ -194,6 +194,7 @@ func TestSettingsFormNavigation(t *testing.T) {
 	f.Update(tea.KeyMsg{Type: tea.KeyTab}) // ftp
 	f.Update(tea.KeyMsg{Type: tea.KeyTab}) // sftp
 	f.Update(tea.KeyMsg{Type: tea.KeyTab}) // webdav
+	f.Update(tea.KeyMsg{Type: tea.KeyTab}) // s3
 	f.Update(tea.KeyMsg{Type: tea.KeyTab}) // save
 	if got := f.form.GetFocusedField().GetKey(); got != "save" {
 		t.Fatalf("expected 'save' after tabs, got %q", got)
@@ -211,10 +212,16 @@ func TestSettingsFormNavigation(t *testing.T) {
 		t.Fatalf("expected 'save' after Shift+Tab on 'lang' (loop), got %q", got)
 	}
 
-	// Shift+Tab on "save" should go to "webdav"
+	// Shift+Tab on "save" should go to "s3"
+	f.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	if got := f.form.GetFocusedField().GetKey(); got != "s3" {
+		t.Fatalf("expected 's3' after Shift+Tab on 'save', got %q", got)
+	}
+
+	// Shift+Tab on "s3" should go to "webdav"
 	f.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
 	if got := f.form.GetFocusedField().GetKey(); got != "webdav" {
-		t.Fatalf("expected 'webdav' after Shift+Tab on 'save', got %q", got)
+		t.Fatalf("expected 'webdav' after Shift+Tab on 's3', got %q", got)
 	}
 
 	// Shift+Tab on "webdav" should go to "sftp"

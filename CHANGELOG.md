@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - 2026-09-24
+
+### Added
+
+- **☁️ S3 and S3-compatible object storage support** — Native object storage integration supporting AWS S3, MinIO, Cloudflare R2, Aliyun OSS, Ceph, and S3-compatible APIs:
+  - **Zero-Dependency Native SigV4 Client**: Built using pure Go standard-library HTTP, crypto/hmac, and encoding/xml, completely eliminating heavy third-party S3 SDKs and transitive dependencies to keep the compiled binary compact (~15.6MB, saving ~2.5MB bloat).
+  - **TUI Site Manager & Browser (`O` or `[`/`]` tabs)**: Saved sites inventory in `~/.config/ctty/s3.json` (`0600` permissions), Secret Access Key stored securely in the AES-256-GCM credential vault (`s3:` prefix), add/edit site form with SSL, PathStyle (path-style vs virtual-hosted addressing), and Insecure TLS toggles. Full keyboard navigation (`Tab`, `Shift+Tab`, `Up`, `Down`, `Enter`, `Ctrl+S`).
+  - **Dual & Single-Pane Browser**: Dual-pane local|remote object browser with single/dual layout toggle (`v`), remote bucket/prefix navigation, search filtering (`/`), directory marker creation (`n`), rename (`R`), recursive object deletion (`d`), item details (`i`), and transfer queue with cancel support (`Esc`).
+  - **Settings & Help Integration**: Configurable default S3 browser layout (`dual` or `single`) in System Settings (`S` form), help modal (`h` / `?`) with dedicated S3 category, and dynamic viewport budget management to ensure bottom help text is always visible across all terminal dimensions.
+  - **Headless CLI for Agents & Scripts**: `ctty s3 list [--format json]`, `ctty s3 search [query] [--format json]`, `ctty s3 info <site> [--format json]`, `ctty s3 ls <site> [path] [--format json]`, `ctty s3 get <site> <remote> <local>`, `ctty s3 put <site> <local> <remote>`, `ctty s3 mkdir <site> <remotePath>`, `ctty s3 rm <site> <remotePath> [-r]`, `ctty s3 rename <site> <oldPath> <newPath>` (alias: `mv`), with shell completions and progress on stderr.
+  - **Agent Skill & Documentation**: Updated `skills/ctty/` specifications and bilingual `README.md` / `README_CN.md`.
+  - **Comprehensive Unit Testing**: End-to-end tests with mock S3 HTTP server, CLI tests, terminal width adaptation, form navigation, and layout toggle persistence.
+
 ## [1.2.0] - 2026-09-23
 
 ### Added

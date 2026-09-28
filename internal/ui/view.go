@@ -74,6 +74,14 @@ func (m Model) View() string {
 		if m.webdavForm != nil {
 			content = m.webdavForm.View()
 		}
+	case ViewS3:
+		if m.s3SitesForm != nil {
+			content = m.s3SitesForm.View()
+		}
+	case ViewS3Browse:
+		if m.s3Form != nil {
+			content = m.s3Form.View()
+		}
 	case ViewLocalBrowser:
 		if m.localBrowserForm != nil {
 			content = m.localBrowserForm.View()
@@ -582,6 +590,7 @@ func renderProtocolTabs(styles Styles, activeTab string, count int, terminalWidt
 		{id: "telnet", key: "T", label: i18n.T("tab.telnet")},
 		{id: "ftp", key: "F", label: i18n.T("tab.ftp")},
 		{id: "webdav", key: "W", label: i18n.T("tab.webdav")},
+		{id: "s3", key: "O", label: i18n.T("tab.s3")},
 		{id: "browser", key: "b", label: i18n.T("tab.local")},
 	}
 

@@ -101,6 +101,9 @@ func (m Model) Init() tea.Cmd {
 	if m.webdavForm != nil && m.viewMode == ViewWebDAVBrowse {
 		cmds = append(cmds, m.webdavForm.Init())
 	}
+	if m.s3Form != nil && m.viewMode == ViewS3Browse {
+		cmds = append(cmds, m.s3Form.Init())
+	}
 
 	return tea.Batch(cmds...)
 }
@@ -191,6 +194,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.webdavForm != nil {
 			m.webdavForm.Update(msg)
+		}
+		if m.s3SitesForm != nil {
+			m.s3SitesForm.Update(msg)
+		}
+		if m.s3Form != nil {
+			m.s3Form.Update(msg)
 		}
 		if m.localBrowserForm != nil {
 			m.localBrowserForm.Update(msg)
@@ -471,10 +480,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case helpCloseMsg:
-		// Close help: return to list view
-		m.viewMode = ViewList
+		targetView := m.helpPrevView
+		if targetView == 0 {
+			targetView = ViewList
+		}
+		m.viewMode = targetView
 		m.helpForm = nil
-		m.table.Focus()
+		if targetView == ViewList {
+			m.table.Focus()
+		}
+		return m, nil
+
+	case s3ShowHelpMsg:
+		m.helpPrevView = m.viewMode
+		m.helpForm = NewHelpForm(m.styles, m.width, m.height, m.currentVersion)
+		m.viewMode = ViewHelp
 		return m, nil
 
 	case serialConnectMsg:
@@ -491,7 +511,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 
 	case switchProtocolMsg:
-		if m.serialOnly || m.telnetOnly || m.ftpOnly || m.webdavOnly {
+		if m.serialOnly || m.telnetOnly || m.ftpOnly || m.webdavOnly || m.s3Only {
 			return m, nil
 		}
 		// Clean up any active sub-forms or connections
@@ -500,6 +520,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.viewMode == ViewWebDAVBrowse && m.webdavForm != nil && m.webdavForm.client != nil {
 			_ = m.webdavForm.client.Close()
+		}
+		if m.viewMode == ViewS3Browse && m.s3Form != nil && m.s3Form.client != nil {
+			_ = m.s3Form.client.Close()
 		}
 		if m.viewMode == ViewSFTP && m.sftpForm != nil && m.sftpForm.client != nil {
 			_ = m.sftpForm.client.Close()
@@ -510,6 +533,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ftpForm = nil
 		m.webdavSitesForm = nil
 		m.webdavForm = nil
+		m.s3SitesForm = nil
+		m.s3Form = nil
 		m.localBrowserForm = nil
 
 		switch msg.target {
@@ -528,6 +553,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case ViewWebDAV:
 			m.webdavSitesForm = NewWebDAVSitesForm(m.styles, m.width, m.height)
 			m.viewMode = ViewWebDAV
+			return m, nil
+		case ViewS3:
+			m.s3SitesForm = NewS3SitesForm(m.styles, m.width, m.height)
+			m.viewMode = ViewS3
 			return m, nil
 		case ViewLocalBrowser:
 			cwd, err := os.Getwd()
@@ -676,6 +705,46 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case webdavSitesDoneMsg:
 		m.webdavSitesForm = nil
 		if m.webdavOnly {
+			return m, tea.Quit
+		}
+		m.viewMode = ViewList
+		m.table.Focus()
+		return m, nil
+
+	case s3OpenBrowserMsg:
+		m.s3SitesForm = nil
+		layout := config.S3LayoutDual
+		if m.appConfig != nil {
+			layout = config.NormalizeS3Layout(m.appConfig.S3Layout)
+		}
+		m.s3Form = NewS3FormWithLayout(m.styles, m.width, m.height, msg.siteName, layout)
+		m.viewMode = ViewS3Browse
+		m.s3FromSites = true
+		return m, m.s3Form.Init()
+
+	case s3DoneMsg:
+		if m.s3Form != nil && m.s3Form.client != nil {
+			_ = m.s3Form.client.Close()
+		}
+		m.s3Form = nil
+		if m.viewMode == ViewS3Browse && m.s3FromSites {
+			m.s3FromSites = false
+			m.s3SitesForm = NewS3SitesForm(m.styles, m.width, m.height)
+			m.viewMode = ViewS3
+			return m, nil
+		}
+		m.s3SitesForm = nil
+		m.s3FromSites = false
+		if m.s3Only {
+			return m, tea.Quit
+		}
+		m.viewMode = ViewList
+		m.table.Focus()
+		return m, nil
+
+	case s3SitesDoneMsg:
+		m.s3SitesForm = nil
+		if m.s3Only {
 			return m, tea.Quit
 		}
 		m.viewMode = ViewList
@@ -881,6 +950,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, cmd
 			}
+		case ViewS3:
+			if m.s3SitesForm != nil {
+				updatedModel, cmd := m.s3SitesForm.Update(msg)
+				if fm, ok := updatedModel.(*s3SitesModel); ok {
+					m.s3SitesForm = fm
+				}
+				return m, cmd
+			}
+		case ViewS3Browse:
+			if m.s3Form != nil {
+				updatedModel, cmd := m.s3Form.Update(msg)
+				if fm, ok := updatedModel.(*s3FormModel); ok {
+					m.s3Form = fm
+				}
+				return m, cmd
+			}
 		case ViewLocalBrowser:
 			if m.localBrowserForm != nil {
 				updatedModel, cmd := m.localBrowserForm.Update(msg)
@@ -1002,6 +1087,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.webdavForm = wm
 			}
 			return m, webdavCmd
+		}
+	case ViewS3:
+		if m.s3SitesForm != nil {
+			updatedModel, s3Cmd := m.s3SitesForm.Update(msg)
+			if sm, ok := updatedModel.(*s3SitesModel); ok {
+				m.s3SitesForm = sm
+			}
+			return m, s3Cmd
+		}
+	case ViewS3Browse:
+		if m.s3Form != nil {
+			updatedModel, s3Cmd := m.s3Form.Update(msg)
+			if sm, ok := updatedModel.(*s3FormModel); ok {
+				m.s3Form = sm
+			}
+			return m, s3Cmd
 		}
 	case ViewLocalBrowser:
 		if m.localBrowserForm != nil {
@@ -1505,6 +1606,13 @@ func (m Model) handleListViewKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.viewMode = ViewWebDAV
 			return m, nil
 		}
+	case "O":
+		if !m.searchMode && !m.deleteMode {
+			// Open S3 site manager
+			m.s3SitesForm = NewS3SitesForm(m.styles, m.width, m.height)
+			m.viewMode = ViewS3
+			return m, nil
+		}
 	case "b":
 		if !m.searchMode && !m.deleteMode {
 			// Open standalone local file browser
@@ -1609,6 +1717,7 @@ func (m Model) handleListViewKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "h":
 		if !m.searchMode && !m.deleteMode {
 			// Show help
+			m.helpPrevView = ViewList
 			m.helpForm = NewHelpForm(m.styles, m.width, m.height, m.currentVersion)
 			m.viewMode = ViewHelp
 			return m, nil

@@ -61,6 +61,24 @@ func NormalizeWebDAVLayout(layout WebDAVLayout) WebDAVLayout {
 	return WebDAVLayoutDual
 }
 
+type S3Layout string
+
+const (
+	S3LayoutDual   S3Layout = "dual"
+	S3LayoutSingle S3Layout = "single"
+)
+
+func (l S3Layout) Valid() bool {
+	return l == S3LayoutDual || l == S3LayoutSingle
+}
+
+func NormalizeS3Layout(layout S3Layout) S3Layout {
+	if layout.Valid() {
+		return layout
+	}
+	return S3LayoutDual
+}
+
 // KeyBindings represents configurable key bindings for the application
 type KeyBindings struct {
 	// Quit keys - keys that will quit the application
@@ -80,6 +98,7 @@ type AppConfig struct {
 	FTPLayout       FTPLayout         `json:"ftp_layout,omitempty"`
 	SFTPLayout      SFTPLayout        `json:"sftp_layout,omitempty"`
 	WebDAVLayout    WebDAVLayout      `json:"webdav_layout,omitempty"`
+	S3Layout        S3Layout          `json:"s3_layout,omitempty"`
 }
 
 // IsUpdateCheckEnabled returns true if the update check is enabled (default: true)

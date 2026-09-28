@@ -414,10 +414,12 @@ func (m *localBrowserModel) handleBrowseKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd
 		return m, func() tea.Msg { return switchProtocolMsg{target: ViewFTP} }
 	case "W":
 		return m, func() tea.Msg { return switchProtocolMsg{target: ViewWebDAV} }
+	case "O":
+		return m, func() tea.Msg { return switchProtocolMsg{target: ViewS3} }
 	case "]":
 		return m, func() tea.Msg { return switchProtocolMsg{target: ViewList} }
 	case "[":
-		return m, func() tea.Msg { return switchProtocolMsg{target: ViewWebDAV} }
+		return m, func() tea.Msg { return switchProtocolMsg{target: ViewS3} }
 	case "g":
 		m.table.SetCursor(0)
 		return m, nil
